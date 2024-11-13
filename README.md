@@ -27,9 +27,9 @@ Before you begin, ensure you have the following installed:
    
 Install the dependencies:
 
-bash
+   ```bash
 npm install
-
+```
 Configuration
 Set Up Database:
 
@@ -38,7 +38,7 @@ Ensure your Amazon RDS MySQL instance is up and running.
 Update the database configuration in your config.js file with your RDS endpoint, username, and password.
 
 Example config.js:
-
+   ```bash
 javascript
 module.exports = {
   host: "your-rds-endpoint",
@@ -46,9 +46,10 @@ module.exports = {
   password: "your-password",
   database: "your-database-name"
 };
-
+```
 Running the Project
 Start the server:
-
+   ```bash
 npm start
+```
 The backend server will start and connect to your MySQL database on Amazon RDS.
