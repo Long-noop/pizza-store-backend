@@ -1,12 +1,12 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const customerRoutes = require('./routes/customersRoute.js');
+const authRoutes = require('./routes/authRoute.js')
 require('dotenv').config();
 
 const app = express();
 
 app.use(bodyParser.json());
-app.use('/api', customerRoutes);
+app.use('/api/user',authRoutes)
 
 app.get('/', (req, res) => {
     res.send('Welcome to Pizza Store API');
