@@ -4,9 +4,19 @@ const authRoutes = require('./routes/authRoute.js');
 const foodRoutes = require('./routes/foodRoute.js');
 const menuRoutes = require('./routes/menuRoute.js');
 require('dotenv').config();
+const cors = require('cors');
 
 const app = express();
 
+// CORS configuration
+const corsOptions = {
+  origin: 'http://localhost:3000', // Remove trailing slash
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'token'],
+};
+
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use('/api/user',authRoutes);
 app.use('/api/food', foodRoutes);
