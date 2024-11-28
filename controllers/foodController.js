@@ -6,6 +6,9 @@ const foodController = {
     addFood: async (req, res) => {
         try {
             const foodData = req.body;
+            if (!foodData.Product_Name || !foodData.Description || !foodData.SizeWithPrice || !foodData.Menu_Name) {
+                return res.status(400).json({ error: 'All fields are required' });
+            }
             if (req.file) {
                 const imagePath = path.join('uploads', req.file.filename);
                 foodData.Image = imagePath;
@@ -30,6 +33,18 @@ const foodController = {
         try {
             const foods = await Food.listFood();
             res.status(200).json(foods);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    },
+
+    getFoodById: async (req, res) => {
+        try {
+            const food = await Food.findFoodById(req.params.id);
+            if (!food) {
+                return res.status(404).json({ error: 'Food not found' });
+            }
+            res.status(200).json(food);
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
