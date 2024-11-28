@@ -61,10 +61,10 @@ exports.getCart = async (req, res) => {
         }
 
         const [items] = await db.query(
-            `SELECT ci.cart_item_id, ci.product_id, p.name, ci.size, ci.quantity, ci.price AS price_per_item, 
+            `SELECT ci.cart_item_id, ci.product_id, p.Product_Name, ci.size, ci.quantity, ci.price AS price_per_item, 
                     (ci.quantity * ci.price) AS total_price
              FROM Cart_Item ci 
-             JOIN Product p ON ci.product_id = p.product_id
+             JOIN PRODUCT p ON ci.product_id = p.Product_ID
              WHERE ci.cart_id = ?`,
             [cart.cart_id]
         );
