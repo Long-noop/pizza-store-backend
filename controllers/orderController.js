@@ -44,7 +44,7 @@ exports.createOrder = async (req, res) => {
     }
 };
 
-exports.getOrderDetails = async (req, res) => {
+exports.getOrderDetailsByCustomer_id = async (req, res) => {
     const { customer_id } = req.query;
 
     if (!customer_id) {
@@ -54,7 +54,7 @@ exports.getOrderDetails = async (req, res) => {
     try {
         // Retrieve all orders for the customer
         const [orders] = await db.query(
-            `SELECT order_id, status, address 
+            `SELECT order_id, status, address, order_date
              FROM \`Order\` 
              WHERE Cus_Place_Order = ?`,
             [customer_id]
@@ -67,10 +67,10 @@ exports.getOrderDetails = async (req, res) => {
         // Fetch details of items for each order
         const orderDetailsPromises = orders.map(async (order) => {
             const [items] = await db.query(
-                `SELECT oi.product_id, p.name, oi.size, oi.quantity, oi.price AS price_per_item,
+                `SELECT oi.product_id, p.Product_Name, oi.size, oi.quantity, oi.price AS price_per_item,
                         (oi.quantity * oi.price) AS total_price
                  FROM Order_Item oi
-                 JOIN Product p ON oi.product_id = p.product_id
+                 JOIN PRODUCT p ON oi.product_id = p.Product_ID
                  WHERE oi.order_id = ?`,
                 [order.order_id]
             );
@@ -85,6 +85,44 @@ exports.getOrderDetails = async (req, res) => {
         res.status(500).json({ error: "Failed to fetch orders for the customer" });
     }
 };
+
+exports.getOrderDetailsByOrder_id = async (req, res) => {
+    const { orderId } = req.query;
+
+    if (!orderId) {
+        return res.status(400).json({ error: "Order ID is required" });
+    }
+
+    try {
+        // Lấy thông tin đơn hàng
+        const [orderDetails] = await db.query(
+            `SELECT order_id, Cus_Place_Order, status, address, order_date
+             FROM \`Order\`
+             WHERE order_id = ?`,
+            [orderId]
+        );
+
+        if (!orderDetails.length) {
+            return res.status(404).json({ error: "Order not found" });
+        }
+
+        // Lấy danh sách sản phẩm trong đơn hàng
+        const [orderItems] = await db.query(
+            `SELECT oi.product_id, p.Product_Name, oi.size, oi.quantity, oi.price AS price_per_item,
+                    (oi.quantity * oi.price) AS total_price
+             FROM Order_Item oi
+             JOIN PRODUCT p ON oi.product_id = p.Product_ID
+             WHERE oi.order_id = ?`,
+            [orderId]
+        );
+
+        res.status(200).json({ orderDetails: orderDetails[0], orderItems });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to fetch order details" });
+    }
+};
+
 
 exports.updateOrderAddress = async (req, res) => {
     const { order_id, address} = req.body;
