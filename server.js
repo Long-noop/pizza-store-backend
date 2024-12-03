@@ -13,7 +13,7 @@ const app = express();
 
 // CORS configuration
 const corsOptions = {
-  origin: 'http://localhost:3000', // Remove trailing slash
+  origin: ['http://localhost:3000', 'http://54.252.196.164:3000'], // Remove trailing slash
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization', 'token'],
