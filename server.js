@@ -12,14 +12,14 @@ const cors = require('cors');
 const app = express();
 
 // CORS configuration
-const corsOptions = {
-  origin: ['http://localhost:3000', 'http://52.63.150.112:3001'], // Remove trailing slash
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization', 'token'],
-};
+// const corsOptions = {
+//   origin: ['http://localhost:3000', 'http://52.63.150.112:3001'], // Remove trailing slash
+//   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+//   credentials: true,
+//   allowedHeaders: ['Content-Type', 'Authorization', 'token'],
+// };
 
-app.use(cors(corsOptions));
+// app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use('/api/userAuth',authRoutes);
 app.use('/api/user', userRoutes);
