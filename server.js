@@ -1,3 +1,5 @@
+const fs = require('fs');
+const https = require('https');
 const express = require('express');
 const bodyParser = require('body-parser');
 const authRoutes = require('./routes/authRoute.js');
@@ -12,28 +14,33 @@ const cors = require('cors');
 const app = express();
 
 // CORS configuration
-// const corsOptions = {
-//   origin: ['http://localhost:3000', 'http://52.63.150.112:3001'], // Remove trailing slash
-//   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-//   credentials: true,
-//   allowedHeaders: ['Content-Type', 'Authorization', 'token'],
-// };
+const corsOptions = {
+  origin: 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'token'],
+};
 
-// app.use(cors(corsOptions));
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
-app.use('/api/userAuth',authRoutes);
+app.use('/api/userAuth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/food', foodRoutes);
-app.use('/api/menu', menuRoutes);    
+app.use('/api/menu', menuRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/order', orderRoutes);
 
 app.get('/', (req, res) => {
-    res.send('Welcome to Pizza Store API');
-  });
-  
+  res.send('Welcome to Pizza Store API');
+});
+
+// Cấu hình HTTPS
+const options = {
+  key: fs.readFileSync('/etc/ssl/myapp/myapp.key'),
+  cert: fs.readFileSync('/etc/ssl/myapp/myapp.crt'),
+};
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port http://localhost:${PORT}`);
+https.createServer(options, app).listen(PORT, () => {
+  console.log(`Server is running on https://localhost:${PORT}`);
 });
