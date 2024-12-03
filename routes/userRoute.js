@@ -6,4 +6,4 @@ const router = express.Router();
 
 router.get('/customer_id', authMiddleware, getCustomerIds);
 
-module.exports = router;
+ module.exports = router;
