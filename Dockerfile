@@ -15,7 +15,7 @@ COPY . .
 ENV NODE_ENV=${NODE_ENV}
 
 # Expose cổng server
-EXPOSE 3001
+EXPOSE 80
 
 # Khởi động ứng dụng
 CMD ["npm", "start"]

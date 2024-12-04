@@ -13,7 +13,7 @@ const app = express();
 
 // CORS configuration
 const corsOptions = {
-  origin: ['http://localhost:3000', 'http://52.63.150.112:3001'], // Remove trailing slash
+  origin: ['http://localhost:3000'], // Remove trailing slash
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization', 'token'],
@@ -33,7 +33,7 @@ app.get('/', (req, res) => {
   });
   
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
     console.log(`Server is running on port http://localhost:${PORT}`);
 });
