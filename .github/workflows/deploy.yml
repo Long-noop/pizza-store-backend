@@ -13,6 +13,9 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
+    - name: List files in the current directory
+      run: ls -al
+
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
