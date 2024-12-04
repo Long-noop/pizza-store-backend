@@ -38,6 +38,8 @@ jobs:
         sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
         sudo chmod +x /usr/local/bin/docker-compose
 
+    - name: Print working directory
+      run: pwd
 
     - name: Build Docker image
       run: docker-compose up -d --build
@@ -61,7 +63,11 @@ jobs:
         chmod 600 ~/ec2-svapikey.pem
         scp -i ~/ec2-svapikey.pem docker-compose.yml .env ubuntu@54.153.176.43:/home/ubuntu/pizza-store-backend
         ssh -i ~/ec2-svapikey.pem ubuntu@54.153.176.43 << 'EOF'
-          cd /home/ubuntu/pizza-backend
+          cd /home/ubuntu/pizza-store-backend
           docker-compose down
           docker-compose up -d --build
         EOF
+
+    - name: Print working directory
+      run: pwd
+
