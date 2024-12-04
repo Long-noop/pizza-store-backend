@@ -34,7 +34,7 @@ jobs:
       run: npm install
 
     - name: Build Docker image
-      run: docker-compose build -t pizza-backend:latest .
+      run: docker build -t pizza-backend:latest .
 
     - name: Create .ssh directory
       run: |
