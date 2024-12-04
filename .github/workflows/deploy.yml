@@ -24,6 +24,9 @@ jobs:
     - name: Build Docker image
       run: docker build -t pizza-backend:latest .
 
+    - name: Add EC2 to known_hosts
+      run: ssh-keyscan -H $EC2_PUBLIC_IP >> ~/.ssh/known_hosts
+
     - name: Push Docker image to EC2
       env:
         SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
