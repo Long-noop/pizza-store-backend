@@ -17,31 +17,9 @@ exports.registerCustomer = async (req, res) => {
   }
 
   try {
-    const conn = await pool.getConnection();
-    // Kiểm tra trùng username
-    const [existingUsername] = await conn.query(
-      'SELECT COUNT(*) AS count FROM Account WHERE username = ?',
-      [username]
-    );
-
-    if (existingUsername[0].count > 0) {
-      conn.release();
-      return res.status(400).json({ message: 'Tên người dùng đã tồn tại.' });
-    }
-
-    // Kiểm tra trùng email
-    const [existingEmail] = await conn.query(
-      'SELECT COUNT(*) AS count FROM Account WHERE email = ?',
-      [email]
-    );
-
-    if (existingEmail[0].count > 0) {
-      conn.release();
-      return res.status(400).json({ message: 'Email đã được sử dụng.' });
-    }
-
     const hashedPassword = await hashPassword(password);
 
+    const conn = await pool.getConnection();
     await conn.beginTransaction();
 
     // Thêm vào bảng Account
@@ -95,57 +73,38 @@ exports.login = async (req, res) => {
     // Kiểm tra mật khẩu
     const validPassword = await comparePassword(password, account.password);
     if (!validPassword) {
-      if(password!==account.password){
-        conn.release();
-        return res.status(401).json({ message: 'Sai mật khẩu.' });
-    }
+        if(password!==account.password){
+            conn.release();
+            console.log(password,account.password)
+            return res.status(401).json({ message: 'Sai mật khẩu.' });
+        }
     }
 
-    // Kiểm tra vai trò và lấy thông tin id tương ứng
+    // Kiểm tra vai trò
     let role = 'Customer'; // Mặc định là khách hàng
-    let idField = null; // Tên của trường id (customer_id hoặc employee_id)
-    let idValue = null; // Giá trị của id
-
     const [employees] = await conn.query(
-      'SELECT employee_id, role FROM Employee WHERE account_id = ?',
+      'SELECT * FROM Employee WHERE account_id = ?',
       [account.account_id]
     );
-
     if (employees.length > 0) {
-      role = employees[0].role; // Vai trò nhân viên
-      idField = 'employee_id';
-      idValue = employees[0].employee_id;
-    } else {
-      const [customers] = await conn.query(
-        'SELECT customer_id FROM Customer WHERE account_id = ?',
-        [account.account_id]
-      );
-      if (customers.length > 0) {
-        idField = 'customer_id';
-        idValue = customers[0].customer_id;
-      }
+        role = employees[0].role; // Vai trò nhân viên
     }
-
+    else{
+        const [customers] = await conn.query(
+            'SELECT * FROM Customer WHERE account_id = ?',
+            [account.account_id]
+        );
+    }
     conn.release();
-
-    if (!idValue) {
-      return res.status(401).json({ message: 'Không tìm thấy thông tin tài khoản liên kết.' });
-    }
 
     // Tạo token JWT
     const token = jwt.sign(
-      { accountId: account.account_id, role, [idField]: idValue },
+      { accountId: account.account_id, role },
       process.env.JWT_SECRET,
       { expiresIn: '3h' }
     );
 
-    // Phản hồi dữ liệu
-    res.json({
-      message: 'Đăng nhập thành công.',
-      token,
-      role,
-      [idField]: idValue
-    });
+    res.json({ message: 'Đăng nhập thành công.', token, role });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Đăng nhập thất bại.' });
