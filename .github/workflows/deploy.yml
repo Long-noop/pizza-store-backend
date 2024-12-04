@@ -22,6 +22,9 @@ jobs:
         echo "PORT=${{ secrets.PORT }}" >> .env
         echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
 
+    - name: List files in the current directory
+      run: ls -al
+
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
@@ -31,7 +34,7 @@ jobs:
       run: npm install
 
     - name: Build Docker image
-      run: docker build -t pizza-backend:latest.
+      run: docker build -t pizza-backend:latest .
 
     - name: Create .ssh directory
       run: |
