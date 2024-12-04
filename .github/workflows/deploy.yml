@@ -61,13 +61,28 @@ jobs:
       run: |
         echo "$SSH_PRIVATE_KEY" > ~/ec2-svapikey.pem
         chmod 600 ~/ec2-svapikey.pem
-        scp -i ~/ec2-svapikey.pem docker-compose.yml .env ubuntu@54.153.176.43:/home/ubuntu/pizza-store-backend
-        ssh -i ~/ec2-svapikey.pem ubuntu@54.153.176.43 << 'EOF'
+        scp -i ~/ec2-svapikey.pem docker-compose.yml .env ubuntu@${{ secrets.EC2_PUBLIC_IP }}:/home/ubuntu/pizza-store-backend
+        ssh -i ~/ec2-svapikey.pem ubuntu@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
           cd /home/ubuntu/pizza-store-backend
+
+          # Install PM2 globally
+          npm install pm2 -g
+
+          # Stop any running PM2 processes and delete previous ones
+          pm2 stop pizza-backend || true
+          pm2 delete pizza-backend || true
+
+          # Run application with PM2
+          pm2 start server.js --name "pizza-backend" --watch
+          pm2 save  # Save PM2 process list so it can be resurrected after reboot
+
+          # Make sure PM2 restarts after system reboot
+          sudo pm2 startup systemd -u ubuntu --hp /home/ubuntu
+
+          # Restart Docker containers
           docker-compose down
           docker-compose up -d --build
         EOF
 
     - name: Print working directory
       run: pwd
-
