@@ -29,7 +29,7 @@ jobs:
         SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
       run: |
         echo "$SSH_PRIVATE_KEY" > ~/ec2-svapikey.pem
-        chmod 600 ~/ec2_key.pem
+        chmod 600 ~/ec2-svapikey.pem
         scp -i ~/ec2-svapikey.pem docker-compose.yml ubuntu@<EC2_PUBLIC_IP>:/home/ubuntu/pizza-backend
         ssh -i ~/ec2-svapikey.pem ubuntu@<EC2_PUBLIC_IP> << 'EOF'
           cd /home/ubuntu/pizza-backend
