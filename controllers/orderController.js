@@ -1,15 +1,23 @@
 const db = require('../config/db.js');
+const jwt = require('jsonwebtoken');
 
 exports.createOrder = async (req, res) => {
-    const { customer_id, address } = req.body;
-
-    if (!customer_id) {
-        return res.status(400).json({ error: "Invalid input data" });
-    }
+    const { address } = req.body;
 
     try {
+        const token = req.headers.token;
+        if (!token) {
+            throw new Error("Unauthorized: Token not provided");
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const customerID = decoded.customer_id;
+
+        if (!customerID) {
+            throw new Error("Invalid token: Customer ID not found");
+        }
         // Lấy giỏ hàng
-        const [cart] = await db.query(`SELECT cart_id FROM Cart WHERE customer_id = ?`, [customer_id]);
+        const [cart] = await db.query(`SELECT cart_id FROM Cart WHERE customer_id = ?`, [customerID]);
         if (!cart.length) {
             return res.status(404).json({ error: "Cart is empty" });
         }
@@ -28,9 +36,9 @@ exports.createOrder = async (req, res) => {
 
         // Tạo đơn hàng
         const [orderResult] = await db.query(
-            `INSERT INTO \`Order\` (Cus_Place_Order, status, address, orderTotal)
-             VALUES (?, 'Pending', ?, ?)`,
-            [customer_id, address, orderTotal]
+            `INSERT INTO \`Order\` (Cus_Place_Order, status, address, orderTotal, finalPrice)
+             VALUES (?, 'Pending', ?, ?, ?)`,
+            [customerID, address, orderTotal, orderTotal]
         );
 
         const order_id = orderResult.insertId;
