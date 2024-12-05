@@ -7,6 +7,7 @@ const menuRoutes = require('./routes/menuRoute.js');
 const cartRoutes = require('./routes/cartRoute.js')
 const orderRoutes = require('./routes/orderRoute.js')
 const voucherRoutes = require('./routes/voucherRoute.js')
+const ingredientRoutes = require('./routes/ingredientRoute.js');
 require('dotenv').config();
 const cors = require('cors');
 
@@ -29,6 +30,7 @@ app.use('/api/menu', menuRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/order', orderRoutes);
 app.use('/api/voucher', voucherRoutes);
+app.use('/api/ingredient', ingredientRoutes);
 
 app.get('/', (req, res) => {
     res.send('Welcome to Pizza Store API');
