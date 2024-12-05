@@ -9,6 +9,20 @@ const foodController = {
             if (!foodData.Product_Name || !foodData.Description || !foodData.SizeWithPrice || !foodData.Menu_Name) {
                 return res.status(400).json({ error: 'All fields are required' });
             }
+            
+            // Kiểm tra nếu SizeWithPrice là chuỗi và chuyển thành mảng đối tượng
+            if (typeof foodData.SizeWithPrice === 'string') {
+                try {
+                    foodData.SizeWithPrice = JSON.parse(foodData.SizeWithPrice);  // Chuyển chuỗi thành mảng đối tượng
+                } catch (error) {
+                    return res.status(400).json({ error: 'Invalid JSON format in SizeWithPrice' });
+                }
+            }
+
+            // Kiểm tra lại SizeWithPrice sau khi chuyển đổi
+            if (!Array.isArray(foodData.SizeWithPrice) || foodData.SizeWithPrice.length === 0) {
+                return res.status(400).json({ error: 'Invalid size and price information' });
+            }
             if (req.file) {
                 const imagePath = path.join('uploads', req.file.filename);
                 foodData.Image = imagePath;
