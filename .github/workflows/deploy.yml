@@ -38,12 +38,6 @@ jobs:
         sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
         sudo chmod +x /usr/local/bin/docker-compose
 
-    - name: Print working directory
-      run: pwd
-
-    - name: Build Docker image
-      run: docker-compose up -d --build
-
     - name: Create .ssh directory
       run: |
         mkdir -p ~/.ssh
@@ -54,7 +48,7 @@ jobs:
         ssh-keyscan -H ${{ secrets.EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts
         chmod 644 ~/.ssh/known_hosts
 
-    - name: Push Docker image to EC2
+    - name: Deploy to EC2
       env:
         SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
         EC2_PUBLIC_IP: ${{ secrets.EC2_PUBLIC_IP }}
@@ -63,26 +57,32 @@ jobs:
         chmod 600 ~/ec2-svapikey.pem
         scp -i ~/ec2-svapikey.pem docker-compose.yml .env ubuntu@${{ secrets.EC2_PUBLIC_IP }}:/home/ubuntu/pizza-store-backend
         ssh -i ~/ec2-svapikey.pem ubuntu@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+          # Move to project directory
           cd /home/ubuntu/pizza-store-backend
+
+          # Pull latest code
+          if [ -d ".git" ]; then
+            git reset --hard
+            git pull origin main
+          else
+            echo "Git not initialized in this directory. Skipping pull step."
+          fi
+
+          # Stop and rebuild Docker containers
+          docker-compose down
+          docker-compose up -d --build
 
           # Install PM2 globally
           npm install pm2 -g
 
-          # Stop any running PM2 processes and delete previous ones
+          # Stop and remove old PM2 processes
           pm2 stop pizza-backend || true
           pm2 delete pizza-backend || true
 
-          # Run application with PM2
+          # Start application with PM2
           pm2 start server.js --name "pizza-backend" --watch
-          pm2 save  # Save PM2 process list so it can be resurrected after reboot
+          pm2 save  # Save PM2 process list for persistence
 
-          # Make sure PM2 restarts after system reboot
+          # Configure PM2 to restart on system reboot
           sudo pm2 startup systemd -u ubuntu --hp /home/ubuntu
-
-          # Restart Docker containers
-          docker-compose down
-          docker-compose up -d --build
         EOF
-
-    - name: Print working directory
-      run: pwd
