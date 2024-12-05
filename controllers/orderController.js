@@ -16,11 +16,21 @@ exports.createOrder = async (req, res) => {
 
         const cart_id = cart[0].cart_id;
 
+        // Tính tổng tiền giỏ hàng
+        const [cartTotalResult] = await db.query(
+            `SELECT SUM(quantity * price) AS total
+             FROM Cart_Item
+             WHERE cart_id = ?`,
+            [cart_id]
+        );
+
+        const orderTotal = cartTotalResult[0]?.total || 0;
+
         // Tạo đơn hàng
         const [orderResult] = await db.query(
-            `INSERT INTO \`Order\` (Cus_Place_Order, status, address)
-             VALUES (?, 'Pending', ?)`,
-            [customer_id, address]
+            `INSERT INTO \`Order\` (Cus_Place_Order, status, address, orderTotal)
+             VALUES (?, 'Pending', ?, ?)`,
+            [customer_id, address, orderTotal]
         );
 
         const order_id = orderResult.insertId;
@@ -37,7 +47,7 @@ exports.createOrder = async (req, res) => {
         // Xóa giỏ hàng
         await db.query(`DELETE FROM Cart WHERE cart_id = ?`, [cart_id]);
 
-        res.status(201).json({ message: "Order created successfully", order_id });
+        res.status(201).json({ message: "Order created successfully", order_id, orderTotal });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Failed to checkout" });
@@ -197,41 +207,32 @@ exports.cancelOrder = async (req, res) => {
 
 
 exports.updateOrderStatus = async (req, res) => {
-    const { orderId, status } = req.query;
+    const { orderId, newStatus } = req.query;
 
-    // Kiểm tra đầu vào
-    if (!orderId || !status) {
-        return res.status(400).json({ error: "Order ID and status are required" });
-    }
-
-    // Danh sách trạng thái hợp lệ
-    const validStatuses = ['Pending', 'In Progress', 'Delivered', 'Cancelled', 'Failed'];
-
-    // Kiểm tra tính hợp lệ của trạng thái
-    if (!validStatuses.includes(status)) {
-        return res.status(400).json({ error: "Invalid status value" });
+    if (!orderId || !newStatus) {
+        return res.status(400).json({ error: "Order ID and new status are required" });
     }
 
     try {
-        // Kiểm tra sự tồn tại của đơn hàng
-        const [order] = await db.query(
-            `SELECT * FROM \`Order\` WHERE order_id = ?`,
-            [orderId]
-        );
+        // Gọi stored procedure
+        await db.query(`CALL UpdateOrderStatusProcedure(?, ?, @result_message);`, [orderId, newStatus]);
 
-        if (!order.length) {
-            return res.status(404).json({ error: "Order not found" });
+        const [rows] = await db.query(`SELECT @result_message AS result_message;`);
+        const message = rows[0]?.result_message;
+
+        if (message === 'Order not found') {
+            return res.status(404).json({ error: message });
+        } else if (message === 'Cannot update status of a cancelled order') {
+            return res.status(400).json({ error: message });
+        } else if (message === 'Cannot update to previous status') {
+            return res.status(400).json({ error: message });
         }
 
-        // Cập nhật trạng thái đơn hàng
-        await db.query(
-            `UPDATE \`Order\` SET status = ? WHERE order_id = ?`,
-            [status, orderId]
-        );
-
-        res.status(200).json({ message: `Order status updated to '${status}' successfully` });
+        res.status(200).json({ message });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Failed to update order status" });
     }
 };
+
+
