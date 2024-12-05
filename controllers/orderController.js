@@ -16,11 +16,21 @@ exports.createOrder = async (req, res) => {
 
         const cart_id = cart[0].cart_id;
 
+        // Tính tổng tiền giỏ hàng
+        const [cartTotalResult] = await db.query(
+            `SELECT SUM(quantity * price) AS total
+             FROM Cart_Item
+             WHERE cart_id = ?`,
+            [cart_id]
+        );
+
+        const orderTotal = cartTotalResult[0]?.total || 0;
+
         // Tạo đơn hàng
         const [orderResult] = await db.query(
-            `INSERT INTO \`Order\` (Cus_Place_Order, status, address)
-             VALUES (?, 'Pending', ?)`,
-            [customer_id, address]
+            `INSERT INTO \`Order\` (Cus_Place_Order, status, address, orderTotal)
+             VALUES (?, 'Pending', ?, ?)`,
+            [customer_id, address, orderTotal]
         );
 
         const order_id = orderResult.insertId;
@@ -37,7 +47,7 @@ exports.createOrder = async (req, res) => {
         // Xóa giỏ hàng
         await db.query(`DELETE FROM Cart WHERE cart_id = ?`, [cart_id]);
 
-        res.status(201).json({ message: "Order created successfully", order_id });
+        res.status(201).json({ message: "Order created successfully", order_id, orderTotal });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Failed to checkout" });
