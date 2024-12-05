@@ -75,6 +75,32 @@ const foodController = {
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
+    },
+
+    updateFood: async (req, res) => {
+        try {
+            const foodData = req.body;
+
+            if (foodData.SizeWithPrice && typeof foodData.SizeWithPrice === 'string') {
+                try {
+                    foodData.SizeWithPrice = JSON.parse(foodData.SizeWithPrice);
+                } catch (error) {
+                    return res.status(400).json({ error: 'Invalid JSON format in SizeWithPrice' });
+                }
+            }
+
+            if (foodData.SizeWithPrice && (!Array.isArray(foodData.SizeWithPrice) || foodData.SizeWithPrice.length === 0)) {
+                return res.status(400).json({ error: 'Invalid size and price information' });
+            }
+
+            const result = await Food.updateFood(req.params.id, foodData);
+            if (result.error) {
+                return res.status(400).json({ error: result.error });
+            }
+            res.status(200).json({ id: result.id });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
     }
 };
 

@@ -64,6 +64,66 @@ const Food = {
 
         return product;
     },
+
+    updateFood: async (id, food) => {
+        if (food.Menu_Name) {
+            const menuSql = 'SELECT Menu_Name FROM MENU WHERE Menu_Name = ?';
+            const [menuRows] = await db.query(menuSql, [food.Menu_Name]);
+            if (menuRows.length === 0) {
+                return { error: 'Menu does not exist' };
+            }
+        }
+
+        const fields = [];
+        const values = [];
+
+        if (food.Product_Name) {
+            fields.push('Product_Name = ?');
+            values.push(food.Product_Name);
+        }
+        if (food.Image) {
+            fields.push('Image = ?');
+            values.push(food.Image);
+        }
+        if (food.Description) {
+            fields.push('Description = ?');
+            values.push(food.Description);
+        }
+        if (food.Size) {
+            fields.push('Size = ?');
+            values.push(food.Size);
+        }
+        if (food.Price) {
+            fields.push('Price = ?');
+            values.push(food.Price);
+        }
+        if (food.Menu_Name) {
+            fields.push('Menu_Name = ?');
+            values.push(food.Menu_Name);
+        }
+
+        if (fields.length > 0) {
+            const sql = `UPDATE PRODUCT SET ${fields.join(', ')} WHERE Product_ID = ?`;
+            values.push(id);
+            await db.query(sql, values);
+        }
+
+        if (food.SizeWithPrice) {
+            const deletePriceSql = 'DELETE FROM PRICE_WITH_SIZE WHERE Product_ID = ?';
+            await db.query(deletePriceSql, [id]);
+
+            let priceValues;
+            if (Array.isArray(food.SizeWithPrice)) {
+                priceValues = food.SizeWithPrice.map(sizePrice => [id, sizePrice.Size, sizePrice.Price]);
+            } else {
+                priceValues = [[id, food.SizeWithPrice.Size, food.SizeWithPrice.Price]];
+            }
+            const priceSql = 'INSERT INTO PRICE_WITH_SIZE (Product_ID, Size, Price) VALUES ?';
+            await db.query(priceSql, [priceValues]);
+        }
+
+        return { id };
+    },
 };
 
 module.exports = Food;
