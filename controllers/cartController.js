@@ -1,4 +1,5 @@
 const db = require('../config/db.js');
+const jwt = require('jsonwebtoken');
 
 exports.addToCart = async (req,res) => {
     const { customer_id, product_id, size, quantity } = req.body;
@@ -36,28 +37,50 @@ exports.addToCart = async (req,res) => {
             [cart.cart_id, product_id, size, quantity, price]
         );
 
-        res.status(201).json({ cart_id : cart.cart_id });
+        res.status(201).json({message:"Product added to cart"});
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Failed to add product to cart" });
     }
 }
 
+
 exports.getCart = async (req, res) => {
-    const { cart_id } = req.query;
-
-    if (!cart_id) {
-        return res.status(400).json({ error: "Cart ID is required" });
-    }
-
     try {
+        // Lấy token từ header 'token'
+        const token = req.headers.token;
+        if (!token) {
+            return res.status(401).json({ error: "Unauthorized: Token not provided" });
+        }
+
+        // Giải mã token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const customerID = decoded.customer_id;
+
+        if (!customerID) {
+            return res.status(400).json({ error: "Invalid token: Customer ID not found" });
+        }
+
+        // Truy vấn Cart dựa trên customerID
+        const [cart] = await db.query(
+            'SELECT * FROM Cart WHERE customer_id = ?',
+            [customerID]
+        );
+
+        if (cart.length === 0) {
+            return res.status(404).json({ error: "Cart not found for this customer" });
+        }
+
+        const cartID = cart[0].cart_id;
+
+        // Lấy chi tiết các item trong cart
         const [items] = await db.query(
             `SELECT ci.cart_item_id, ci.product_id, p.Product_Name, ci.size, ci.quantity, ci.price AS price_per_item, 
                     (ci.quantity * ci.price) AS total_price
              FROM Cart_Item ci 
              JOIN PRODUCT p ON ci.product_id = p.Product_ID
              WHERE ci.cart_id = ?`,
-            [cart_id]
+            [cartID]
         );
 
         res.status(200).send(JSON.stringify(items, null, 2));
@@ -67,18 +90,26 @@ exports.getCart = async (req, res) => {
     }
 };
 
-exports.removeFromCart = async (req, res) => {
-    const { cart_id, cart_item_id } = req.query;
 
-    if (!cart_id || !cart_item_id) {
+exports.removeFromCart = async (req, res) => {
+    const {cart_item_id } = req.query;
+
+    if (!cart_item_id) {
         return res.status(400).json({ error: "Invalid input data" });
     }
 
     try {
+
+        const[cart] = await db.query(
+            'SELECT * FROM Cart'
+        );
+        if(cart.length === 0) {
+            return res.status(404).json({ error: "Cart not found" });
+        }
         // Xóa sản phẩm khỏi giỏ hàng
         const [result] = await db.query(
             `DELETE FROM Cart_Item WHERE cart_id = ? AND cart_item_id = ?`,
-            [cart_id, cart_item_id]
+            [cart[0].cart_id, cart_item_id]
         );
 
         if (result.affectedRows === 0) {
