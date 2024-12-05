@@ -1,22 +1,44 @@
 const db = require('../config/db.js');
 const jwt = require('jsonwebtoken');
 
-exports.addToCart = async (req,res) => {
-    const { customer_id, product_id, size, quantity } = req.body;
+// Giải mã token và trả về customer_id
+const getCustomerIDFromToken = (req) => {
+    const token = req.headers.token;
+    if (!token) {
+        throw new Error("Unauthorized: Token not provided");
+    }
 
-    if (!customer_id || !product_id || !size || !quantity) {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const customerID = decoded.customer_id;
+
+    if (!customerID) {
+        throw new Error("Invalid token: Customer ID not found");
+    }
+
+    return customerID;
+};
+
+// Lấy cart_id dựa trên customer_id (tạo mới nếu chưa có)
+const getCartID = async (customerID) => {
+    let [cart] = await db.query(`SELECT * FROM Cart WHERE customer_id = ?`, [customerID]);
+    if (!cart.length) {
+        const [result] = await db.query(`INSERT INTO Cart (customer_id) VALUES (?)`, [customerID]);
+        return result.insertId;
+    } else {
+        return cart[0].cart_id;
+    }
+};
+
+exports.addToCart = async (req, res) => {
+    const { product_id, size, quantity } = req.body;
+
+    if (!product_id || !size || !quantity) {
         return res.status(400).json({ error: "Invalid input data" });
     }
 
     try {
-        // Kiểm tra giỏ hàng
-        let [cart] = await db.query(`SELECT * FROM Cart WHERE customer_id = ?`, [customer_id]);
-        if (!cart.length) {
-            const [result] = await db.query(`INSERT INTO Cart (customer_id) VALUES (?)`, [customer_id]);
-            cart = { cart_id: result.insertId };
-        }else {
-             cart = cart[0]; 
-        }
+        const customerID = getCustomerIDFromToken(req); // Lấy customerID từ token
+        const cartID = await getCartID(customerID); // Lấy cart_id (tạo mới nếu chưa có)
 
         // Kiểm tra giá theo kích thước
         const [priceResult] = await db.query(
@@ -34,44 +56,20 @@ exports.addToCart = async (req,res) => {
             `INSERT INTO Cart_Item (cart_id, product_id, size, quantity, price)
              VALUES (?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)`,
-            [cart.cart_id, product_id, size, quantity, price]
+            [cartID, product_id, size, quantity, price]
         );
 
-        res.status(201).json({message:"Product added to cart"});
+        res.status(201).json({ message: "Product added to cart" });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Failed to add product to cart" });
     }
-}
-
+};
 
 exports.getCart = async (req, res) => {
     try {
-        // Lấy token từ header 'token'
-        const token = req.headers.token;
-        if (!token) {
-            return res.status(401).json({ error: "Unauthorized: Token not provided" });
-        }
-
-        // Giải mã token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const customerID = decoded.customer_id;
-
-        if (!customerID) {
-            return res.status(400).json({ error: "Invalid token: Customer ID not found" });
-        }
-
-        // Truy vấn Cart dựa trên customerID
-        const [cart] = await db.query(
-            'SELECT * FROM Cart WHERE customer_id = ?',
-            [customerID]
-        );
-
-        if (cart.length === 0) {
-            return res.status(404).json({ error: "Cart not found for this customer" });
-        }
-
-        const cartID = cart[0].cart_id;
+        const customerID = getCustomerIDFromToken(req); // Lấy customerID từ token
+        const cartID = await getCartID(customerID); // Lấy cart_id
 
         // Lấy chi tiết các item trong cart
         const [items] = await db.query(
@@ -83,33 +81,28 @@ exports.getCart = async (req, res) => {
             [cartID]
         );
 
-        res.status(200).send(JSON.stringify(items, null, 2));
+        res.status(200).json(items);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Failed to fetch cart items" });
     }
 };
 
-
 exports.removeFromCart = async (req, res) => {
-    const {cart_item_id } = req.query;
+    const { cart_item_id } = req.query;
 
     if (!cart_item_id) {
         return res.status(400).json({ error: "Invalid input data" });
     }
 
     try {
+        const customerID = getCustomerIDFromToken(req); // Lấy customerID từ token
+        const cartID = await getCartID(customerID); // Lấy cart_id
 
-        const[cart] = await db.query(
-            'SELECT * FROM Cart'
-        );
-        if(cart.length === 0) {
-            return res.status(404).json({ error: "Cart not found" });
-        }
         // Xóa sản phẩm khỏi giỏ hàng
         const [result] = await db.query(
             `DELETE FROM Cart_Item WHERE cart_id = ? AND cart_item_id = ?`,
-            [cart[0].cart_id, cart_item_id]
+            [cartID, cart_item_id]
         );
 
         if (result.affectedRows === 0) {
@@ -124,18 +117,35 @@ exports.removeFromCart = async (req, res) => {
 };
 
 exports.updateItemQuantity = async (req, res) => {
-    const { cart_item_id, quantity} = req.query;
+    const { cart_item_id, quantity } = req.query;
 
     if (!cart_item_id || !quantity) {
-        return res.status(400).json({ error: "New quantity are required" });
+        return res.status(400).json({ error: "Cart item ID and new quantity are required" });
     }
 
     try {
-        // Update the address
-        await db.query(
-            `UPDATE Cart_Item SET quantity = ? WHERE cart_item_id = ?`,
-            [quantity, cart_item_id]
+        const customerID = getCustomerIDFromToken(req); // Lấy customerID từ token
+        const cartID = await getCartID(customerID); // Lấy cart_id để xác nhận khách hàng sở hữu giỏ hàng
+
+        // Kiểm tra xem cart_item_id có thuộc cart_id của người dùng hay không
+        const [cartItem] = await db.query(
+            `SELECT * FROM Cart_Item WHERE cart_id = ? AND cart_item_id = ?`,
+            [cartID, cart_item_id]
         );
+
+        if (!cartItem.length) {
+            return res.status(404).json({ error: "Cart item not found or does not belong to this cart" });
+        }
+
+        // Cập nhật số lượng sản phẩm
+        const [result] = await db.query(
+            `UPDATE Cart_Item SET quantity = ? WHERE cart_item_id = ? AND cart_id = ?`,
+            [quantity, cart_item_id, cartID]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: "Failed to update quantity" });
+        }
 
         res.status(200).json({ message: "Quantity updated successfully" });
     } catch (error) {
