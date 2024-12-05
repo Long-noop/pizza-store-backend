@@ -66,7 +66,7 @@ jobs:
           cd /home/ubuntu/pizza-store-backend
 
           # Install PM2 globally
-          npm install pm2 -g
+          sudo npm install pm2 -g
 
           # Stop any running PM2 processes and delete previous ones
           pm2 stop pizza-backend || true
