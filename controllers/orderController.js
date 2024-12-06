@@ -16,31 +16,38 @@ exports.createOrder = async (req, res) => {
         if (!customerID) {
             throw new Error("Invalid token: Customer ID not found");
         }
-        // Lấy giỏ hàng
-        const [cart] = await db.query(`SELECT cart_id FROM Cart WHERE customer_id = ?`, [customerID]);
-        if (!cart.length) {
-            return res.status(404).json({ error: "Cart is empty" });
-        }
+        const [cart] = await db.query(
+            `SELECT cart_id, 
+                    (SELECT SUM(quantity * price) FROM Cart_Item WHERE Cart_Item.cart_id = Cart.cart_id) AS subTotal,
+                    DiscountAmount, 
+                    Voucher_ID, 
+                    DiscountLytP, 
+                    Loyalty_Program_ID, 
+                    (subTotal - IFNULL(DiscountAmount, 0) - IFNULL(DiscountLytP, 0)) AS finalPrice
+             FROM Cart 
+             WHERE customer_id = ?`, 
+            [customerID]
+        );
 
         const cart_id = cart[0].cart_id;
 
-        // Tính tổng tiền giỏ hàng
-        const [cartTotalResult] = await db.query(
-            `SELECT SUM(quantity * price) AS total
-             FROM Cart_Item
-             WHERE cart_id = ?`,
-            [cart_id]
-        );
+        // // Tính tổng tiền giỏ hàng
+        // const [cartTotalResult] = await db.query(
+        //     `SELECT SUM(quantity * price) AS total
+        //      FROM Cart_Item
+        //      WHERE cart_id = ?`,
+        //     [cart_id]
+        // );
 
-        const orderTotal = cartTotalResult[0]?.total || 0;
+        // const orderTotal = cartTotalResult[0]?.total || 0;
 
         // Tạo đơn hàng
         const [orderResult] = await db.query(
-            `INSERT INTO \`Order\` (Cus_Place_Order, status, address, orderTotal, finalPrice)
-             VALUES (?, 'Pending', ?, ?, ?)`,
-            [customerID, address, orderTotal, orderTotal]
+            `INSERT INTO \`Order\` (Cus_Place_Order, status, address, OrderTotal, DiscountAmount, Voucher_ID, DiscountLytP, Loyalty_Program_ID, finalPrice)
+             VALUES (?, 'Pending', ?, ?, ? , ?, ?, ?, ?)`,
+            [customerID, address, cart[0].subTotal, cart[0].DiscountAmount, cart[0].Voucher_ID, cart[0].DiscountLytP, cart[0].Loyalty_Program_ID, cart[0].finalPrice]
         );
-
+        
         const order_id = orderResult.insertId;
 
         // Chuyển Cart_Item sang Order_Item
@@ -55,7 +62,7 @@ exports.createOrder = async (req, res) => {
         // Xóa giỏ hàng
         await db.query(`DELETE FROM Cart WHERE cart_id = ?`, [cart_id]);
 
-        res.status(201).json({ message: "Order created successfully", order_id, orderTotal });
+        res.status(201).json({ message: "Order created successfully", order_id});
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Failed to checkout" });
@@ -72,7 +79,7 @@ exports.getOrderDetailsByCustomer_id = async (req, res) => {
     try {
         // Retrieve all orders for the customer
         const [orders] = await db.query(
-            `SELECT order_id, status, address, order_date
+            `SELECT order_id, status, address, order_date, OrderTotal, DiscountAmount, Voucher_ID, DiscountLytP, Loyalty_Program_ID, finalPrice
              FROM \`Order\` 
              WHERE Cus_Place_Order = ?`,
             [customer_id]
@@ -114,7 +121,7 @@ exports.getOrderDetailsByOrder_id = async (req, res) => {
     try {
         // Lấy thông tin đơn hàng
         const [orderDetails] = await db.query(
-            `SELECT order_id, Cus_Place_Order, status, address, order_date
+            `SELECT order_id, Cus_Place_Order, status, address, order_date, OrderTotal, DiscountAmount, Voucher_ID, DiscountLytP, Loyalty_Program_ID, finalPrice
              FROM \`Order\`
              WHERE order_id = ?`,
             [orderId]
