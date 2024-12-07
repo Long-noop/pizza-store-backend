@@ -51,3 +51,13 @@ exports.getIngredientsBySupplierId = async (req, res) => {
         res.status(400).json({ error: error.message });
     }
 };
+
+exports.getSupplierById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const supplier = await Supplier.getSupplierById(id);
+        res.status(200).json(supplier);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+};

@@ -52,8 +52,12 @@ const Supplier = {
     },
 
     getIngredientsBySupplierId: async (supplierId) => {
-        const [rows] = await db.query('SELECT * FROM PROVIDE WHERE Supplier_ID = ?', [supplierId]);
-        return rows;
+        const sql = 'CALL GetIngredientsBySupplier(?)';
+        const [rows] = await db.query(sql, [supplierId]);
+        return rows[0].map(row => ({
+            ...row,
+            expiration_date: row.expiration_date.toISOString().split('T')[0]
+        }));
     }
 };
 
