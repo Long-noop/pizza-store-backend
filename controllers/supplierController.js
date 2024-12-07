@@ -2,6 +2,7 @@ const Supplier = require('../models/Supplier');
 
 exports.addSupplier = async (req, res) => {
     try {
+        delete req.body.userId;
         const supplierId = await Supplier.addSupplier(req.body);
         res.status(200).json({
             supplierId: supplierId

@@ -12,6 +12,7 @@ const ingredientController = {
 
     addIngredient: async (req, res) => {
         try {
+            delete req.body.userId;
             const ingredientId = await Ingredient.addIngredient(req.body);
             res.status(201).json({ id: ingredientId });
         } catch (error) {
