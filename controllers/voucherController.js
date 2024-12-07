@@ -37,6 +37,32 @@ exports.getActiveVouchers = async (req, res) => {
     }
 };
 
+exports.getAllVouchers = async (req, res) => {
+    try {
+        const sql = `SELECT * FROM Voucher `;
+        const [rows] = await db.query(sql);
+        res.status(200).json({
+            success: true,
+            data: rows,
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.deleteVoucher = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        await db.query(`DELETE FROM Voucher WHERE Voucher_ID = ?`, [id]);
+        res.status(200).json({ message: 'Voucher deleted successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to delete voucher' });
+    }
+};
+
+
 
 exports.getVoucherById = async (req, res) => {
     const { voucher_id } = req.query;
