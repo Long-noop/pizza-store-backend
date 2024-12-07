@@ -16,7 +16,7 @@ const app = express();
 
 // CORS configuration
 const corsOptions = {
-  origin: ['http://localhost:3000', 'https://pizza-store-sandy-eta.vercel.app'],
+  origin: ['http://localhost:3000', 'https://pizza-store-bay-nu.vercel.app'], // Remove trailing slash
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization', 'token'],

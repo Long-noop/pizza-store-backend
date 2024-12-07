@@ -49,6 +49,11 @@ const Supplier = {
 
     removeSupplier: async (supplierId) => {
         await db.query('DELETE FROM SUPPLIER WHERE Supplier_ID = ?', [supplierId]);
+    },
+
+    getIngredientsBySupplierId: async (supplierId) => {
+        const [rows] = await db.query('SELECT * FROM PROVIDE WHERE Supplier_ID = ?', [supplierId]);
+        return rows;
     }
 };
 

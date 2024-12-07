@@ -35,10 +35,19 @@ exports.updateSupplier = async (req, res) => {
         const { id } = req.params;
         await Supplier.updateSupplier(id, req.body);
         res.status(200).json({
-          message: 'Supplier updated successfully'
+        message: 'Supplier updated successfully'
         });
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
 };
 
+exports.getIngredientsBySupplierId = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const ingredients = await Supplier.getIngredientsBySupplierId(id);
+        res.status(200).json(ingredients);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+};
