@@ -30,18 +30,16 @@ jobs:
       with:
         node-version: 18
 
-    - name: Install dependencies
-      run: npm install
-
-    - name: Set up Docker Compose
+    # Bỏ qua cài đặt Docker Compose mới, chỉ cần kiểm tra nếu Docker Compose đã có sẵn trên EC2
+    - name: Check if Docker Compose is installed
       run: |
-        sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
-
-    - name: Create .ssh directory
-      run: |
-        mkdir -p ~/.ssh
-        chmod 700 ~/.ssh
+        if ! command -v docker-compose &> /dev/null
+        then
+          echo "Docker Compose could not be found, please install it on the EC2 server."
+          exit 1
+        else
+          echo "Docker Compose is already installed."
+        fi
 
     - name: Add EC2 to known_hosts
       run: |
@@ -55,7 +53,7 @@ jobs:
       run: |
         echo "$SSH_PRIVATE_KEY" > ~/ec2-svapikey.pem
         chmod 600 ~/ec2-svapikey.pem
-        scp -i ~/ec2-svapikey.pem docker-compose.yml .env ubuntu@${{ secrets.EC2_PUBLIC_IP }}:/home/ubuntu/pizza-store-backend
+        scp -i ~/ec2-svapikey.pem docker-compose.yml .env Dockerfile ubuntu@${{ secrets.EC2_PUBLIC_IP }}:/home/ubuntu/pizza-store-backend
         ssh -i ~/ec2-svapikey.pem ubuntu@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
           # Move to project directory
           cd /home/ubuntu/pizza-store-backend
@@ -68,21 +66,7 @@ jobs:
             echo "Git not initialized in this directory. Skipping pull step."
           fi
 
-          # Stop and rebuild Docker containers
+          # Build and run Docker container
           docker-compose down
           docker-compose up -d --build
-
-          # Install PM2 globally
-          npm install pm2 -g
-
-          # Stop and remove old PM2 processes
-          pm2 stop pizza-backend || true
-          pm2 delete pizza-backend || true
-
-          # Start application with PM2
-          pm2 start server.js --name "pizza-backend" --watch
-          pm2 save  # Save PM2 process list for persistence
-
-          # Configure PM2 to restart on system reboot
-          sudo pm2 startup systemd -u ubuntu --hp /home/ubuntu
         EOF
