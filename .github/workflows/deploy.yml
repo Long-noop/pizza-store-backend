@@ -67,8 +67,10 @@ jobs:
 
           # Pull latest code
           if [ -d ".git" ]; then
-            git reset --hard
-            git pull origin main
+            git reset --hard  # Đảm bảo thư mục sạch sẽ
+            git stash  # Lưu thay đổi cục bộ (nếu có)
+            git pull origin main  # Pull code mới
+            git stash pop || true  # Áp dụng lại thay đổi (nếu có)
           else
             echo "Git not initialized in this directory. Skipping pull step."
           fi
