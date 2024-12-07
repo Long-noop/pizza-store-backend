@@ -12,8 +12,22 @@ const Supplier = {
     },
 
     addSupplier: async (supplier) => {
-        const [result] = await db.query('INSERT INTO SUPPLIER SET ?', supplier);
-        return result.insertId;
+        const sql = 'INSERT INTO SUPPLIER (PhoneNumber, Rating, Supplier_Name, Supplier_Address, Email, Description) VALUE (?,?,?,?,?,?)';
+        const [result] = await db.query(sql, [supplier.PhoneNumber, supplier.Rating, supplier.Supplier_Name, supplier.Supplier_Address, supplier.Email, supplier.Description]);
+        const supplierId = result.insertId;
+
+        if (supplier.IngredientWithPrice) {
+            let priceValues;
+            if (Array.isArray(supplier.IngredientWithPrice)) {
+                priceValues = supplier.IngredientWithPrice.map(ingredientPrice => [supplierId, ingredientPrice.Ingredient_ID, ingredientPrice.Price]);
+            } else {
+                priceValues = [[supplierId, supplier.ingredientPrice.Ingredient_ID, supplier.ingredientPrice.Price]];
+            }
+            const priceSql = 'INSERT INTO DISCOUNT_POLICY (Supplier_ID, Ingredient_ID, Price) VALUES ?';
+            await db.query(priceSql, [priceValues]);
+        }
+        
+        return supplierId;
     },
 
     updateSupplier: async (supplierId, supplier) => {
@@ -40,10 +54,27 @@ const Supplier = {
             fields.push('Email = ?');
             values.push(supplier.Email);
         }
+        if (supplier.Description) {
+            fields.push('Description = ?');
+            values.push(supplier.Description);
+        }
         if (fields.length > 0) {
             const sql = `UPDATE SUPPLIER SET ${fields.join(', ')} WHERE Supplier_ID = ?`;
             values.push(supplierId);
             await db.query(sql, values);
+        }
+
+        if (supplier.IngredientWithPrice) {
+            let priceValues;
+            if (Array.isArray(supplier.IngredientWithPrice)) {
+                priceValues = supplier.IngredientWithPrice.map(ingredientPrice => [supplierId, ingredientPrice.Ingredient_ID, ingredientPrice.Price]);
+            } else {
+                priceValues = [[supplierId, supplier.ingredientPrice.Ingredient_ID, supplier.ingredientPrice.Price]];
+            }
+            const deleteSql = 'DELETE FROM DISCOUNT_POLICY WHERE Supplier_ID = ?';
+            await db.query(deleteSql, [supplierId]);
+            const insertSql = 'INSERT INTO DISCOUNT_POLICY (Supplier_ID, Ingredient_ID, Price) VALUES ?';
+            await db.query(insertSql, [priceValues]);
         }
     },
 

@@ -2,7 +2,20 @@ const Supplier = require('../models/Supplier');
 
 exports.addSupplier = async (req, res) => {
     try {
-        delete req.body.userId;
+        delete req.body.Supplier_ID;
+        // Kiểm tra nếu SizeWithPrice là chuỗi và chuyển thành mảng đối tượng
+        if (typeof req.body.IngredientWithPrice === 'string') {
+            try {
+                req.body.IngredientWithPrice = JSON.parse(req.body.IngredientWithPrice);  // Chuyển chuỗi thành mảng đối tượng
+            } catch (error) {
+                return res.status(400).json({ error: 'Invalid JSON format in IngredientWithPrice' });
+            }
+        }
+
+        // Kiểm tra lại SizeWithPrice sau khi chuyển đổi
+        if (!Array.isArray(req.body.IngredientWithPrice) || req.body.IngredientWithPrice.length === 0) {
+            return res.status(400).json({ error: 'Invalid size and price information' });
+        }
         const supplierId = await Supplier.addSupplier(req.body);
         res.status(200).json({
             supplierId: supplierId
@@ -33,6 +46,19 @@ exports.listSuppliers = async (req, res) => {
 
 exports.updateSupplier = async (req, res) => {
     try {
+
+        if (typeof req.body.IngredientWithPrice === 'string') {
+            try {
+                req.body.IngredientWithPrice = JSON.parse(req.body.IngredientWithPrice);  // Chuyển chuỗi thành mảng đối tượng
+            } catch (error) {
+                return res.status(400).json({ error: 'Invalid JSON format in IngredientWithPrice' });
+            }
+        }
+
+        // Kiểm tra lại SizeWithPrice sau khi chuyển đổi
+        if (!Array.isArray(req.body.IngredientWithPrice) || req.body.IngredientWithPrice.length === 0) {
+            return res.status(400).json({ error: 'Invalid size and price information' });
+        }
         const { id } = req.params;
         await Supplier.updateSupplier(id, req.body);
         res.status(200).json({
