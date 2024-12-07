@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   backend:
     build:
@@ -5,12 +7,19 @@ services:
       dockerfile: Dockerfile
     image: pizza-backend:1.0
     ports:
-      - "${PORT}:80"
+      - "${PORT}:80"  # Liên kết cổng từ host tới container
     environment:
       DB_HOST: "${DB_HOST}"
       DB_USER: "${DB_USER}"
       DB_PASSWORD: "${DB_PASSWORD}"
       DB_NAME: "${DB_NAME}"
       JWT_SECRET: "${JWT_SECRET}"
+    volumes:
+      - .:/app  
+    restart: unless-stopped 
+    networks:
+      - backend-network
 
- 
+networks:
+  backend-network:  # Định nghĩa mạng backend nếu bạn muốn cách ly dịch vụ của mình với các dịch vụ khác
+    driver: bridge  # Sử dụng driver bridge cho mạng nội bộ của container
