@@ -1,3 +1,4 @@
+file yml cho cicd
 name: Deploy to AWS EC2
 
 on:
@@ -25,6 +26,14 @@ jobs:
     - name: List files in the current directory
       run: ls -al
 
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+
+    - name: Install dependencies
+      run: npm install
+
     - name: Check if Docker Compose is installed
       run: |
         if ! command -v docker-compose &> /dev/null; then
@@ -34,6 +43,11 @@ jobs:
         else
           echo "Docker Compose is already installed"
         fi
+
+    - name: Create .ssh directory
+      run: |
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
 
     - name: Add EC2 to known_hosts
       run: |
@@ -47,7 +61,7 @@ jobs:
       run: |
         echo "$SSH_PRIVATE_KEY" > ~/ec2-svapikey.pem
         chmod 600 ~/ec2-svapikey.pem
-        scp -i ~/ec2-svapikey.pem docker-compose.yml .env Dockerfile ubuntu@${{ secrets.EC2_PUBLIC_IP }}:/home/ubuntu/pizza-store-backend
+        scp -i ~/ec2-svapikey.pem docker-compose.yml .env ubuntu@${{ secrets.EC2_PUBLIC_IP }}:/home/ubuntu/pizza-store-backend
         ssh -i ~/ec2-svapikey.pem ubuntu@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
           # Move to project directory
           cd /home/ubuntu/pizza-store-backend
@@ -60,7 +74,21 @@ jobs:
             echo "Git not initialized in this directory. Skipping pull step."
           fi
 
-          # Build and run Docker container
+          # Stop and rebuild Docker containers
           docker-compose down
           docker-compose up -d --build
+
+          # Install PM2 globally
+          npm install pm2 -g
+
+          # Stop and remove old PM2 processes
+          pm2 stop pizza-backend || true
+          pm2 delete pizza-backend || true
+
+          # Start application with PM2
+          pm2 start server.js --name "pizza-backend" --watch
+          pm2 save  # Save PM2 process list for persistence
+
+          # Configure PM2 to restart on system reboot
+          sudo pm2 startup systemd -u ubuntu --hp /home/ubuntu
         EOF
