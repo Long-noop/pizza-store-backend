@@ -8,5 +8,6 @@ router.delete('/remove/:id', authMiddleware, supplierController.removeSupplier);
 router.get('/list', authMiddleware, supplierController.listSuppliers);
 router.put('/update/:id', authMiddleware, supplierController.updateSupplier);
 router.get('/:id/ingredients', authMiddleware, supplierController.getIngredientsBySupplierId);
+router.get('/:id', authMiddleware, supplierController.getSupplierById);
 
 module.exports = router;

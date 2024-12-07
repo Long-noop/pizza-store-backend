@@ -39,6 +39,19 @@ const ingredientController = {
         } catch (error) {
           res.status(500).json({ error: error.message });
         }
+    },
+
+    getIngredientById: async (req, res) => {
+        try {
+            const ingredient = await Ingredient.getIngredientById(req.params.id);
+            if (ingredient) {
+                res.json(ingredient);
+            } else {
+                res.status(404).json({ message: "Ingredient not found" });
+            }
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
     }
 };
 
