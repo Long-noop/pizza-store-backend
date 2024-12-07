@@ -25,10 +25,15 @@ jobs:
     - name: List files in the current directory
       run: ls -al
 
-    - name: Set up Docker
+    - name: Check if Docker Compose is installed
       run: |
-        sudo apt-get update
-        sudo apt-get install -y docker.io docker-compose
+        if ! command -v docker-compose &> /dev/null; then
+          echo "Docker Compose not found, installing..."
+          sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+        else
+          echo "Docker Compose is already installed"
+        fi
 
     - name: Add EC2 to known_hosts
       run: |
