@@ -73,21 +73,9 @@ jobs:
             echo "Git not initialized in this directory. Skipping pull step."
           fi
 
-          # Stop and rebuild Docker containers
-          docker-compose down
-          docker-compose up -d --build
+          # Stop and rebuild Docker containers using Docker Compose
+          docker-compose down  # Dừng các container đang chạy
+          docker-compose up -d --build  # Xây dựng và chạy lại các container trong chế độ detached
 
-          # Install PM2 globally
-          npm install pm2 -g
-
-          # Stop and remove old PM2 processes
-          pm2 stop pizza-backend || true
-          pm2 delete pizza-backend || true
-
-          # Start application with PM2
-          pm2 start server.js --name "pizza-backend" --watch
-          pm2 save  # Save PM2 process list for persistence
-
-          # Configure PM2 to restart on system reboot
-          sudo pm2 startup systemd -u ubuntu --hp /home/ubuntu
+          # Docker Compose sẽ tự động đảm bảo ứng dụng chạy trong container, không cần PM2
         EOF
