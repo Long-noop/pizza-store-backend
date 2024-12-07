@@ -82,6 +82,19 @@ exports.addToCart = async (req, res) => {
     }
 };
 
+exports.getCartIdByUser = async (req, res) => {
+    try {
+        const customerID = getCustomerIDFromToken(req); // Lấy customerID từ token
+        const cartID = await getCartID(customerID); // Lấy cart_id
+
+        res.status(200).json({cart_id:cartID});
+    }catch(error){
+        console.error(error);
+        res.status(500).json({ error: "Failed to fetch cartID" });
+    }
+};
+
+
 exports.getCart = async (req, res) => {
     try {
         const customerID = getCustomerIDFromToken(req); // Lấy customerID từ token
@@ -117,6 +130,7 @@ exports.getCart = async (req, res) => {
         );
         
         const cartDetails = {
+            cart_id: cartID,
             subTotal, // Tổng giá trị giỏ hàng
             voucher: cartInfo[0] || null, // Thông tin voucher nếu có
             loyaltyDiscount: cartInfo[0].DiscountLytP,
