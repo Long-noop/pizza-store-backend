@@ -1,5 +1,5 @@
 const db = require('../config/db.js');
-
+const jwt =require('jsonwebtoken')
 exports.getEmployeeList = async (req, res) => {
     try {
         const [result] = await db.query(`CALL GetEmployeeList()`);
@@ -18,6 +18,27 @@ exports.getCustomerList = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to fetch customer list' });
+    }
+};
+
+exports.getLoyaltyPoint = async (req, res) => {
+    try {
+        const token = req.headers.token;
+        if (!token) {
+            throw new Error("Unauthorized: Token not provided");
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const customerID = decoded.customer_id;
+
+        if (!customerID) {
+            throw new Error("Invalid token: Customer ID not found");
+        }
+        const [result] = await db.query(`SELECT loyalty_points FROM Customer WHERE customer_id = ?`,[customerID]);
+        res.status(200).json(result[0]); // Kết quả trả về từ thủ tục
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch customerID' });
     }
 };
 
