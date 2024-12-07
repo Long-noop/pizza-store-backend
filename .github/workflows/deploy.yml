@@ -25,21 +25,10 @@ jobs:
     - name: List files in the current directory
       run: ls -al
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 18
-
-    # Bỏ qua cài đặt Docker Compose mới, chỉ cần kiểm tra nếu Docker Compose đã có sẵn trên EC2
-    - name: Check if Docker Compose is installed
+    - name: Set up Docker
       run: |
-        if ! command -v docker-compose &> /dev/null
-        then
-          echo "Docker Compose could not be found, please install it on the EC2 server."
-          exit 1
-        else
-          echo "Docker Compose is already installed."
-        fi
+        sudo apt-get update
+        sudo apt-get install -y docker.io docker-compose
 
     - name: Add EC2 to known_hosts
       run: |
