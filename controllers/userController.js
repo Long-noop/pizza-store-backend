@@ -1,50 +1,20 @@
 const db = require('../config/db.js');
 
-// exports.getCustomerIds = async (req, res) => {
-//     try {
-//         // Truy vấn danh sách customer_id
-//         const [customers] = await db.query(`SELECT customer_id FROM Customer`);
-        
-//         // Kiểm tra dữ liệu trả về
-//         if (!customers.length) {
-//             return res.status(404).json({ error: "No customers found" });
-//         }
-
-//         // Trả về danh sách customer_id
-//         res.status(200).json({customers});
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ error: "Failed to fetch customer IDs" });
-//     }
-// };
-
 exports.getEmployeeList = async (req, res) => {
-    const { search, sortBy = 'employee_id', order = 'asc', page = 1, limit = 10 } = req.body;
-    
-    const offset = (page - 1) * limit;
-
     try {
-        const [rows] = await db.query(
-            'CALL GetEmployeeList(?, ?, ?, ?, ?)',
-            [search, sortBy, order, page, limit]
-        );
-        res.status(200).json(rows[0]);
+        const [result] = await db.query(`CALL GetEmployeeList()`);
+        res.status(200).json(result[0]); // Kết quả trả về từ thủ tục
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Failed to fetch employees' });
+        res.status(500).json({ error: 'Failed to fetch employee list' });
     }
 };
 
 
 exports.getCustomerList = async (req, res) => {
-    const { search , page = 1, limit = 10 } = req.body;  // Lấy các tham số từ query params, mặc định là giá trị rỗng cho tìm kiếm và 10 kết quả mỗi trang
-
     try {
-        // Gọi thủ tục GetCustomerList với các tham số từ request
-        const [result] = await db.query(`CALL GetCustomerList(?, ?, ?)`, [search, page, limit]);
-
-        // Trả kết quả về cho client
-        res.status(200).json(result[0]);  // Kết quả trả về từ thủ tục (mảng chứa kết quả)
+        const [result] = await db.query(`CALL GetCustomerList()`);
+        res.status(200).json(result[0]); // Kết quả trả về từ thủ tục
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to fetch customer list' });

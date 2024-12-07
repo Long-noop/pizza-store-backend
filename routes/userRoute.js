@@ -8,6 +8,6 @@ router.get('/employee', authMiddleware, getEmployeeList);
 router.get('/customer', authMiddleware, getCustomerList);
 router.post('/addEmployee', authMiddleware, addNewEmployee);
 router.delete('/removeEmployee/:id', authMiddleware, deleteEmployee);
-router.put('/updateEInfo:/id', authMiddleware, updateEmployeeInfo);
+router.put('/updateEInfo/:id', authMiddleware, updateEmployeeInfo);
 
 module.exports = router;
