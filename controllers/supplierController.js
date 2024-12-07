@@ -47,17 +47,19 @@ exports.listSuppliers = async (req, res) => {
 exports.updateSupplier = async (req, res) => {
     try {
 
-        if (typeof req.body.IngredientWithPrice === 'string') {
-            try {
-                req.body.IngredientWithPrice = JSON.parse(req.body.IngredientWithPrice);  // Chuyển chuỗi thành mảng đối tượng
-            } catch (error) {
-                return res.status(400).json({ error: 'Invalid JSON format in IngredientWithPrice' });
+        if (req.body.IngredientWithPrice) {
+            if (typeof req.body.IngredientWithPrice === 'string') {
+                try {
+                    req.body.IngredientWithPrice = JSON.parse(req.body.IngredientWithPrice);  // Chuyển chuỗi thành mảng đối tượng
+                } catch (error) {
+                    return res.status(400).json({ error: 'Invalid JSON format in IngredientWithPrice' });
+                }
             }
-        }
 
-        // Kiểm tra lại SizeWithPrice sau khi chuyển đổi
-        if (!Array.isArray(req.body.IngredientWithPrice) || req.body.IngredientWithPrice.length === 0) {
-            return res.status(400).json({ error: 'Invalid size and price information' });
+            // Kiểm tra lại SizeWithPrice sau khi chuyển đổi
+            if (!Array.isArray(req.body.IngredientWithPrice) || req.body.IngredientWithPrice.length === 0) {
+                return res.status(400).json({ error: 'Invalid size and price information' });
+            }
         }
         const { id } = req.params;
         await Supplier.updateSupplier(id, req.body);
