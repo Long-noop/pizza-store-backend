@@ -59,6 +59,22 @@ exports.addToCart = async (req, res) => {
             [cartID, product_id, size, quantity, price]
         );
 
+        // Tính tổng tiền giỏ hàng
+        const [cartTotalResult] = await db.query(
+            `SELECT SUM(quantity * price) AS total
+             FROM Cart_Item
+             WHERE cart_id = ?`,
+            [cartID]
+        );
+        const subTotal = cartTotalResult[0]?.total || 0;
+
+        await db.query(
+            `UPDATE Cart
+             SET subTotal = ?
+             WHERE cart_id = ?`,
+            [subTotal,cartID]
+        );
+
         res.status(201).json({ message: "Product added to cart" });
     } catch (error) {
         console.error(error);
@@ -81,10 +97,37 @@ exports.getCart = async (req, res) => {
             [cartID]
         );
 
-        res.status(200).json(items);
+        // Tính tổng giá trị giỏ hàng (subTotal)
+        const [cartSummary] = await db.query(
+            `SELECT SUM(ci.quantity * ci.price) AS subTotal
+             FROM Cart_Item ci
+             WHERE ci.cart_id = ?`,
+            [cartID]
+        );
+
+        const subTotal = cartSummary[0]?.subTotal || 0;
+
+        // Lấy thông tin voucher hoặc chương trình giảm giá
+        const [cartInfo] = await db.query(
+            `SELECT c.Voucher_ID, v.Voucher_Code, v.Discount_Type, v.Discount_Value, c.DiscountLytP
+             FROM Cart c
+             LEFT JOIN Voucher v ON c.Voucher_ID = v.Voucher_ID
+             WHERE c.cart_id = ?`,
+            [cartID]
+        );
+        
+        const cartDetails = {
+            subTotal, // Tổng giá trị giỏ hàng
+            voucher: cartInfo[0] || null, // Thông tin voucher nếu có
+            loyaltyDiscount: cartInfo[0].DiscountLytP,
+            items, // Chi tiết từng sản phẩm
+            
+        };
+
+        res.status(200).json(cartDetails);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: "Failed to fetch cart items" });
+        res.status(500).json({ error: "Failed to fetch cart details" });
     }
 };
 
