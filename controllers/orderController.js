@@ -111,6 +111,28 @@ exports.getOrderDetailsByCustomer_id = async (req, res) => {
     }
 };
 
+exports.getAllOrders = async (req, res) => {
+    try {
+        // Truy vấn tất cả các đơn hàng trong bảng Order
+        const [orders] = await db.query(
+            `SELECT *
+             FROM \`Order\``
+        );
+
+        // Kiểm tra nếu không có bản ghi nào
+        if (!orders.length) {
+            return res.status(404).json({ message: "No orders found" });
+        }
+
+        // Trả về danh sách đơn hàng
+        res.status(200).json(orders);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to fetch orders" });
+    }
+};
+
+
 exports.getOrderDetailsByOrder_id = async (req, res) => {
     const { orderId } = req.query;
 
