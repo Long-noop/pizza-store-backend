@@ -35,6 +35,13 @@ const Ingredient = {
             fields.push('expiration_date = ?');
             values.push(ingredient.expiration_date);
         }
+        if (fields.length > 0) {
+            const sql = `UPDATE Ingredient SET ${fields.join(', ')} WHERE ingredient_id = ?`;
+            values.push(ingredientId);
+            await db.query(sql, values);
+        }
+        fields.length = 0;
+        values.length = 0;
         if (ingredient.Supplier_ID) {
             fields.push('Supplier_ID = ?');
             values.push(ingredient.Supplier_ID);
@@ -44,7 +51,7 @@ const Ingredient = {
             values.push(ingredient.Product_ID);
         }
         if (fields.length > 0) {
-            const sql = `UPDATE Ingredient SET ${fields.join(', ')} WHERE ingredient_id = ?`;
+            const sql = `UPDATE PROVIDE SET ${fields.join(', ')} WHERE Ingredient_ID = ?`;
             values.push(ingredientId);
             await db.query(sql, values);
         }
