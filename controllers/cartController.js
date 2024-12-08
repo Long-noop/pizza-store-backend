@@ -18,7 +18,6 @@ const getCustomerIDFromToken = (req) => {
     return customerID;
 };
 
-// Lấy cart_id dựa trên customer_id (tạo mới nếu chưa có)
 const getCartID = async (customerID) => {
     let [cart] = await db.query(`SELECT * FROM Cart WHERE customer_id = ?`, [customerID]);
     if (!cart.length) {

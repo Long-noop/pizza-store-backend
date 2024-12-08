@@ -362,7 +362,7 @@ exports.revokeLoyaltyPointsFromCart = async (req, res) => {
 
     try {
         const [cart] = await db.query(
-            `SELECT Loyalty_Program_ID, DiscountLytP FROM Cart WHERE cart_id = ?`,
+            `SELECT Loyalty_Program_ID, DiscountLytP, customer_id FROM Cart WHERE cart_id = ?`,
             [cartId]
         );
 
@@ -370,7 +370,7 @@ exports.revokeLoyaltyPointsFromCart = async (req, res) => {
             return res.status(400).json({ error: 'No loyalty points applied to this cart.' });
         }
 
-        const { Loyalty_Program_ID, DiscountLytP } = cart[0];
+        const { customer_id, DiscountLytP } = cart[0];
 
         await db.query(
             `UPDATE Cart 
@@ -385,7 +385,7 @@ exports.revokeLoyaltyPointsFromCart = async (req, res) => {
             `UPDATE Customer 
              SET loyalty_points = loyalty_points + ? 
              WHERE customer_id = ?`,
-            [DiscountLytP, Loyalty_Program_ID]
+            [DiscountLytP, customer_id]
         );
 
         res.json({ message: 'Loyalty points revoked successfully!' });
