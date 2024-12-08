@@ -188,14 +188,6 @@ exports.deleteEvent = async (req, res) => {
     }
 };
 
-
-
-
-
-
-
-
-
 exports.applyVoucherToCart = async (req, res) => {
     const { cartId, voucherCode } = req.body;
 
@@ -304,7 +296,6 @@ exports.applyLoyaltyPointsToCart = async (req, res) => {
             FROM Voucher
             WHERE Voucher_Code = ?
               AND Status = 'Active' 
-              AND Max_Usage > 0
               AND Start_Date <= CURRENT_DATE 
               AND End_Date >= CURRENT_DATE`,
             [voucherCode]
