@@ -62,8 +62,6 @@ exports.deleteVoucher = async (req, res) => {
     }
 };
 
-
-
 exports.getVoucherById = async (req, res) => {
     const { voucher_id } = req.query;
 
@@ -129,6 +127,74 @@ exports.createEvent = async (req, res) => {
         });
     }
 };
+
+exports.getEventById = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [result] = await db.query(`SELECT * FROM SPECIAL_EVENT WHERE Event_ID = ?`, [id]);
+
+        if (result.length === 0) {
+            return res.status(404).json({ success: false, message: "Event not found" });
+        }
+
+        res.status(200).json({ success: true, event: result[0] });
+    } catch (error) {
+        console.error("Failed to fetch event:", error);
+        res.status(500).json({ success: false, message: "Failed to fetch event" });
+    }
+};
+
+exports.updateEvent = async (req, res) => {
+    const { id } = req.params;
+    const { event_name, date_start, date_end, description, status, event_type } = req.body;
+
+    // Kiểm tra dữ liệu đầu vào
+    if (!event_name || !date_start || !date_end) {
+        return res.status(400).json({ success: false, message: "Tên sự kiện, ngày bắt đầu và ngày kết thúc là bắt buộc." });
+    }
+
+    try {
+        const [result] = await db.query(
+            `UPDATE SPECIAL_EVENT SET Event_Name = ?, Date_Start = ?, Date_End = ?, Description = ?, Status = ?, Event_Type = ? WHERE Event_ID = ?`,
+            [event_name, date_start, date_end, description || null, status, event_type, id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: "Event not found" });
+        }
+
+        res.status(200).json({ success: true, message: "Event updated successfully" });
+    } catch (error) {
+        console.error("Failed to update event:", error);
+        res.status(500).json({ success: false, message: "Failed to update event" });
+    }
+};
+
+exports.deleteEvent = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [result] = await db.query(`DELETE FROM SPECIAL_EVENT WHERE Event_ID = ?`, [id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: "Event not found" });
+        }
+
+        res.status(200).json({ success: true, message: "Event deleted successfully" });
+    } catch (error) {
+        console.error("Failed to delete event:", error);
+        res.status(500).json({ success: false, message: "Failed to delete event" });
+    }
+};
+
+
+
+
+
+
+
+
 
 exports.applyVoucherToCart = async (req, res) => {
     const { cartId, voucherCode } = req.body;

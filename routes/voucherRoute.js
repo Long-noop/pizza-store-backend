@@ -1,5 +1,5 @@
 const express = require('express');
-const {createVoucher, getActiveVouchers, getVoucherById, updateVoucherStatus, createEvent, applyVoucherToCart, revokeVoucherFromCart, applyLoyaltyPointsToCart, revokeLoyaltyPointsFromCart, getAllVouchers, deleteVoucher } = require('../controllers/voucherController.js');
+const {createVoucher, getActiveVouchers, getVoucherById, updateVoucherStatus, createEvent, applyVoucherToCart, revokeVoucherFromCart, applyLoyaltyPointsToCart, revokeLoyaltyPointsFromCart, getAllVouchers, deleteVoucher, getEventById, updateEvent, deleteEvent } = require('../controllers/voucherController.js');
 const authMiddleware = require('../middleware/auth');
 const { route } = require('./authRoute.js');
 
@@ -16,4 +16,7 @@ router.post('/applyLytPoints', authMiddleware, applyLoyaltyPointsToCart)
 router.post('/removeLytP', authMiddleware, revokeLoyaltyPointsFromCart);
 router.get('/get',authMiddleware,getAllVouchers);
 router.delete('/deleteVch/:id',authMiddleware,deleteVoucher);
+router.get('/getEvent/:id',authMiddleware,getEventById);
+router.put('/updateEvent/:id',authMiddleware,updateEvent);
+router.delete('/deleteEvent/:id',authMiddleware,deleteEvent);
 module.exports = router;
