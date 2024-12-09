@@ -2,12 +2,14 @@ const db = require('../config/db.js');
 
 const Supplier = {
     getAllSuppliers: async () => {
-        const [rows] = await db.query('SELECT * FROM SUPPLIER');
-        return rows;
+        const sql = 'CALL GetSupplier(?)';
+        const [rows] = await db.query(sql, [null]);
+        return rows[0];
     },
 
     getSupplierById: async (supplierId) => {
-        const [rows] = await db.query('SELECT * FROM SUPPLIER WHERE Supplier_ID = ?', [supplierId]);
+        const sql = 'CALL GetSupplier(?)';
+        const [rows] = await db.query(sql, supplierId);
         return rows[0];
     },
 

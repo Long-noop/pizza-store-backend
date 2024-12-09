@@ -13,7 +13,7 @@ const ingredientController = {
     addIngredient: async (req, res) => {
         try {
             delete req.body.userId;
-            const ingredientId = await Ingredient.addIngredient(req.body);
+            const ingredientId = await Ingredient.addIngredient(req.body.name);
             res.status(201).json({ id: ingredientId });
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -52,6 +52,17 @@ const ingredientController = {
             }
         } catch (error) {
             res.status(500).json({ error: error.message });
+        }
+    },
+    buyIngredient: async (req, res) => {
+        try {
+            console.log(req.body);
+            await Ingredient.buyIngredient(req.body);
+            res.status(200).json({
+              message: "Ingredient bought successfully"
+            });
+        } catch (error) {
+          res.status(500).json({ error: error.message });
         }
     }
 };
