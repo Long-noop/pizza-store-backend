@@ -1,0 +1,533 @@
+
+CREATE DATABASE /*!32312 IF NOT EXISTS*/ `PizzaStore_v1` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
+
+USE `PizzaStore_v1`;
+
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `Account` (
+  `account_id` int NOT NULL AUTO_INCREMENT,
+  `username` varchar(255) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  PRIMARY KEY (`account_id`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+DELIMITER $$
+CREATE TRIGGER `check_email_format` 
+BEFORE INSERT ON `Account`
+FOR EACH ROW BEGIN
+    -- Biểu thức chính quy kiểm tra email
+    IF NEW.email NOT REGEXP '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$' THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Email không hợp lệ. Vui lòng nhập đúng định dạng.';
+    END IF;
+END $$
+DELIMITER ;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `Employee` (
+  `account_id` INT NOT NULL,
+  `employee_id` VARCHAR(10) NOT NULL,
+  `store_id` INT DEFAULT NULL,
+  `birth_date` DATE DEFAULT NULL,
+  `gender` VARCHAR(10) DEFAULT NULL,
+  `phone` VARCHAR(15) DEFAULT NULL,
+  `role` ENUM('Sales','Customer Support','Kitchen','Delivery','Manager') DEFAULT NULL,
+  PRIMARY KEY (`employee_id`),
+  UNIQUE KEY `phone` (`phone`),
+  KEY `store_id` (`store_id`),
+  KEY `fk_Eaccount` (`account_id`),
+  CONSTRAINT `Employee_ibfk_1` FOREIGN KEY (`store_id`) REFERENCES `Store` (`store_id`),
+  CONSTRAINT `fk_Eaccount` FOREIGN KEY (`account_id`) REFERENCES `Account` (`account_id`),
+  CONSTRAINT `chk_phone_format` CHECK (phone REGEXP '^[0-9]{10}$'),  -- Kiểm tra phone có 10 chữ số
+  CONSTRAINT `chk_birth_date` CHECK (YEAR(CURDATE()) - YEAR(birth_date) >= 18 AND YEAR(CURDATE()) - YEAR(birth_date) <= 65)  -- Kiểm tra tuổi từ 18 đến 65
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+DELIMITER $$
+CREATE TRIGGER BeforeInsertEmployee
+BEFORE INSERT ON `Employee`
+FOR EACH ROW
+BEGIN
+  DECLARE next_id INT;
+  DECLARE prefix VARCHAR(3);
+
+  -- Xác định prefix dựa trên role
+  CASE NEW.role
+    WHEN 'Sales' THEN SET prefix = 'SAL';
+    WHEN 'Customer Support' THEN SET prefix = 'CS';
+    WHEN 'Kitchen' THEN SET prefix = 'KIT';
+    WHEN 'Delivery' THEN SET prefix = 'DEL';
+    WHEN 'Manager' THEN SET prefix = 'MAN';
+    ELSE SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid role';
+  END CASE;
+
+  -- Tính toán ID tiếp theo
+  SET next_id = (SELECT IFNULL(MAX(CAST(SUBSTRING(employee_id, 4) AS UNSIGNED)), 0) + 1 
+                 FROM Employee WHERE employee_id LIKE CONCAT(prefix, '%'));
+
+  -- Tạo employee_id
+  SET NEW.employee_id = CONCAT(prefix, LPAD(next_id, 5, '0'));
+END$$
+DELIMITER ;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `Customer` (
+  `customer_id` VARCHAR(10) NOT NULL,  -- Định dạng 'CUS00001', 'CUS00002'
+  `account_id` VARCHAR(10) NOT NULL,
+  `loyalty_points` INT DEFAULT 0,
+  PRIMARY KEY (`customer_id`),
+  UNIQUE KEY `account_id` (`account_id`),
+  CONSTRAINT `fk_account` FOREIGN KEY (`account_id`) REFERENCES `Account` (`account_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+DELIMITER $$
+CREATE TRIGGER BeforeInsertCustomer  
+BEFORE INSERT ON `Customer`
+FOR EACH ROW
+BEGIN
+  DECLARE new_id VARCHAR(20);
+    DECLARE current_year CHAR(4);
+    DECLARE next_number INT;
+
+    SET current_year = YEAR(CURDATE());
+
+    -- Lấy số thứ tự lớn nhất của năm hiện tại
+    SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(customer_id, '-', -1) AS UNSIGNED)), 0) + 1
+    INTO next_number
+    FROM Customer
+    WHERE customer_id LIKE CONCAT('CUS-', current_year, '-%');
+
+    -- Tạo khóa chính mới
+    SET new_id = CONCAT('CUS-', current_year, '-', LPAD(next_number, 5, '0'));
+    SET NEW.customer_id = new_id;
+END$$
+DELIMITER ;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `BUY` (
+  `Manager_ID` int NOT NULL,
+  `Ingredient_ID` int NOT NULL,
+  `Supplier_ID` int NOT NULL,
+  `Purchase_Time` datetime DEFAULT NULL,
+  `Price` decimal(10,2) DEFAULT NULL,
+  `Quantity` int DEFAULT NULL,
+  `Status` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`Manager_ID`,`Ingredient_ID`,`Supplier_ID`),
+  KEY `Ingredient_ID` (`Ingredient_ID`),
+  KEY `BUY_ibfk_3_idx` (`Supplier_ID`),
+  CONSTRAINT `BUY_ibfk_1` FOREIGN KEY (`Manager_ID`) REFERENCES `Manager` (`manager_id`),
+  CONSTRAINT `BUY_ibfk_2` FOREIGN KEY (`Ingredient_ID`) REFERENCES `Ingredient` (`ingredient_id`),
+  CONSTRAINT `BUY_ibfk_3` FOREIGN KEY (`Supplier_ID`) REFERENCES `SUPPLIER` (`Supplier_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+-- Table structure for table `CANCEL_ORDER`
+CREATE TABLE `CANCEL_ORDER` (
+  `Order_ID` int NOT NULL,
+  `Cancel_Time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`Order_ID`),
+  CONSTRAINT `FK_Cancel_Order` FOREIGN KEY (`Order_ID`) REFERENCES `Order` (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `Cart` (
+  `cart_id` int NOT NULL AUTO_INCREMENT,
+  `customer_id` VARCHAR(10) NOT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`cart_id`),
+  KEY `customer_id` (`customer_id`),
+  CONSTRAINT `Cart_ibfk_1` FOREIGN KEY (`customer_id`) REFERENCES `Customer` (`customer_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=46 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `Cart_Item` (
+  `cart_item_id` int NOT NULL AUTO_INCREMENT,
+  `cart_id` int NOT NULL,
+  `product_id` int NOT NULL,
+  `size` varchar(50) NOT NULL,
+  `quantity` int NOT NULL,
+  `price` decimal(10,2) NOT NULL,
+  PRIMARY KEY (`cart_item_id`),
+  KEY `cart_id` (`cart_id`),
+  KEY `product_id` (`product_id`,`size`),
+  CONSTRAINT `Cart_Item_ibfk_1` FOREIGN KEY (`cart_id`) REFERENCES `Cart` (`cart_id`) ON DELETE CASCADE,
+  CONSTRAINT `Cart_Item_ibfk_3` FOREIGN KEY (`product_id`, `size`) REFERENCES `PRICE_WITH_SIZE` (`Product_ID`, `Size`)
+) ENGINE=InnoDB AUTO_INCREMENT=76 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `DISCOUNT_POLICY` (
+  `Supplier_ID` int NOT NULL,
+  `Ingredient_ID` int NOT NULL,
+  `Price_list` decimal(10,2) DEFAULT NULL,
+  `DeliveryTime` datetime DEFAULT NULL,
+  `Discount` decimal(5,2) DEFAULT NULL,
+  KEY `Ingredient_ID` (`Ingredient_ID`),
+  KEY `DISCOUNT_POLICY_ibfk_1_idx` (`Supplier_ID`),
+  CONSTRAINT `DISCOUNT_POLICY_ibfk_1` FOREIGN KEY (`Supplier_ID`) REFERENCES `SUPPLIER` (`Supplier_ID`),
+  CONSTRAINT `DISCOUNT_POLICY_ibfk_2` FOREIGN KEY (`Ingredient_ID`) REFERENCES `INGREDIENT` (`Ingredient_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `INGREDIENT` (
+  `Ingredient_ID` int NOT NULL,
+  `Ingredient_Name` varchar(255) DEFAULT NULL,
+  `Quantity` int DEFAULT NULL,
+  `Expiration_Date` date DEFAULT NULL,
+  PRIMARY KEY (`Ingredient_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `Ingredient` (
+  `ingredient_id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) DEFAULT NULL,
+  `quantity` int DEFAULT NULL,
+  `expiration_date` date DEFAULT NULL,
+  PRIMARY KEY (`ingredient_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `LOYALTY_PROGRAM` (
+  `Program_ID` int NOT NULL,
+  `ProgramName` varchar(255) NOT NULL,
+  `Discount` decimal(5,2) DEFAULT '0.00',
+  `Role` varchar(50) NOT NULL,
+  `Point` int DEFAULT '0',
+  PRIMARY KEY (`Program_ID`),
+  CONSTRAINT `LOYALTY_PROGRAM_chk_1` CHECK (((`Discount` >= 0) and (`Discount` <= 100))),
+  CONSTRAINT `LOYALTY_PROGRAM_chk_2` CHECK ((`Point` >= 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `Loyal_Customer` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `report_id` int NOT NULL,
+  `customer_id` VARCHAR(10) NOT NULL,
+  `total_orders` int NOT NULL,
+  `total_spent` decimal(15,2) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `report_id` (`report_id`),
+  KEY `customer_id` (`customer_id`),
+  CONSTRAINT `Loyal_Customer_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `Periodic_Report` (`report_id`),
+  CONSTRAINT `Loyal_Customer_ibfk_2` FOREIGN KEY (`customer_id`) REFERENCES `Customer` (`customer_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `MANAGE` (
+  `Manager_ID` int NOT NULL,
+  `Ma_Account_ID` int NOT NULL,
+  `Warehouse_ID` int NOT NULL,
+  `Entry_Date` date DEFAULT NULL,
+  `Export_Date` date DEFAULT NULL,
+  PRIMARY KEY (`Manager_ID`,`Ma_Account_ID`,`Warehouse_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `MENU` (
+  `Menu_Name` varchar(255) NOT NULL,
+  `Image` varchar(255) DEFAULT NULL,
+  `Description` text,
+  PRIMARY KEY (`Menu_Name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `Manager` (
+  `manager_id` int NOT NULL AUTO_INCREMENT,
+  `employee_id` VARCHAR(10) NOT NULL,
+  `department` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`manager_id`),
+  KEY `employee_id` (`employee_id`),
+  CONSTRAINT `Manager_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `Employee` (`employee_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `ORDER_ITEM_CONTAIN_PRODUCT` (
+  `Product_ID` int NOT NULL,
+  `Order_Item_ID` int NOT NULL,
+  PRIMARY KEY (`Product_ID`),
+  KEY `FK_Order_Item` (`Order_Item_ID`),
+  CONSTRAINT `FK_Order_Item` FOREIGN KEY (`Order_Item_ID`) REFERENCES `Order_Item` (`order_item_id`),
+  CONSTRAINT `FK_Product` FOREIGN KEY (`Product_ID`) REFERENCES `PRODUCT` (`Product_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `Order` (
+  `order_id` int NOT NULL AUTO_INCREMENT,
+  `order_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `Bonus_Point` int DEFAULT '0',
+  `Paid` decimal(10,2) DEFAULT '0.00',
+  `Delivery` enum('Yes','No') DEFAULT 'No',
+  `Pickup` enum('Yes','No') DEFAULT 'No',
+  `Payment_Code` int DEFAULT NULL,
+  `Cus_Place_Order` int DEFAULT NULL,
+  `Ship_Code` int DEFAULT NULL,
+  `status` enum('Pending','In Progress','Delivered','Cancelled','Failed') NOT NULL,
+  `address` varchar(255) DEFAULT NULL,
+  `OrderTotal` decimal(10,2) DEFAULT '0.00',
+  `DiscountAmount` decimal(10,2) DEFAULT '0.00',
+  `Voucher_ID` int DEFAULT NULL,
+  `DiscountLytP` decimal(10,2) DEFAULT '0.00',
+  `finalPrice` decimal(10,2) DEFAULT NULL,
+  `Loyalty_Program_ID` int DEFAULT NULL,
+  PRIMARY KEY (`order_id`),
+  KEY `fk_customer_id` (`Cus_Place_Order`),
+  KEY `FK_Order_Voucher` (`Voucher_ID`),
+  KEY `FK_Loyalty_Program` (`Loyalty_Program_ID`),
+  CONSTRAINT `fk_customer_id` FOREIGN KEY (`Cus_Place_Order`) REFERENCES `Customer` (`customer_id`),
+  CONSTRAINT `FK_Loyalty_Program` FOREIGN KEY (`Loyalty_Program_ID`) REFERENCES `Voucher` (`Voucher_ID`),
+  CONSTRAINT `FK_Order_Voucher` FOREIGN KEY (`Voucher_ID`) REFERENCES `Voucher` (`Voucher_ID`) ON DELETE SET NULL,
+  CONSTRAINT `Order_chk_1` CHECK ((`Bonus_Point` >= 0)),
+  CONSTRAINT `Order_chk_2` CHECK ((`Paid` >= 0))
+) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+DELIMITER $$
+CREATE TRIGGER `update_loyalty_points_after_payment` 
+AFTER UPDATE ON `Order` 
+FOR EACH ROW 
+BEGIN
+  -- Kiểm tra trạng thái đơn hàng được giao
+  IF NEW.status = 'Delivered' THEN
+    -- Kiểm tra voucher có tồn tại và hợp lệ
+    IF (
+      SELECT COUNT(*)
+      FROM Voucher
+      WHERE Voucher_ID = 8
+        AND Status = 'Active'
+        AND Discount_Type = 'Percent'
+        AND Start_Date <= CURDATE()
+        AND End_Date >= CURDATE()
+    ) > 0 THEN
+      -- Lấy giá trị reward_rate từ voucher
+      SET @reward_rate = (
+        SELECT Discount_Value
+        FROM Voucher
+        WHERE Voucher_ID = NEW.Loyalty_Program_ID
+      );
+
+      -- Tính điểm thưởng
+      SET @earned_points = FLOOR(NEW.OrderTotal * @reward_rate / 100);
+
+      -- Cập nhật điểm thưởng vào Customer
+      UPDATE Customer
+      SET loyalty_points = loyalty_points + @earned_points
+      WHERE customer_id = NEW.Cus_Place_Order;
+
+      -- Ghi lại số điểm thưởng trong đơn hàng
+      UPDATE `Order`
+      SET Bonus_Point = @earned_points
+      WHERE order_id = NEW.order_id;
+    END IF;
+  END IF;
+END $$
+DELIMITER ;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `Order_Item` (
+  `order_item_id` int NOT NULL AUTO_INCREMENT,
+  `order_id` int DEFAULT NULL,
+  `quantity` int DEFAULT NULL,
+  `price` decimal(10,2) DEFAULT NULL,
+  `product_id` int NOT NULL,
+  `size` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`order_item_id`),
+  KEY `order_id` (`order_id`),
+  KEY `fk_product_id` (`product_id`),
+  CONSTRAINT `Order_Item_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `Order` (`order_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=62 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `Order_Review` (
+  `review_id` int NOT NULL AUTO_INCREMENT,
+  `order_id` int NOT NULL,
+  `customer_id` VARCHAR(10) NOT NULL,
+  `employee_id` VARCHAR(10) NOT NULL,
+  `rating` int NOT NULL,
+  `comment` text,
+  `review_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`review_id`),
+  KEY `order_id` (`order_id`),
+  KEY `customer_id` (`customer_id`),
+  KEY `employee_id` (`employee_id`),
+  CONSTRAINT `Order_Review_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `Order` (`order_id`),
+  CONSTRAINT `Order_Review_ibfk_2` FOREIGN KEY (`customer_id`) REFERENCES `Customer` (`customer_id`),
+  CONSTRAINT `Order_Review_ibfk_3` FOREIGN KEY (`employee_id`) REFERENCES `Employee` (`employee_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `PRESERVE` (
+  `Ingredient_ID` int NOT NULL,
+  `Warehouse_ID` int NOT NULL,
+  PRIMARY KEY (`Ingredient_ID`,`Warehouse_ID`),
+  KEY `Warehouse_ID` (`Warehouse_ID`),
+  CONSTRAINT `PRESERVE_ibfk_1` FOREIGN KEY (`Ingredient_ID`) REFERENCES `INGREDIENT` (`Ingredient_ID`),
+  CONSTRAINT `PRESERVE_ibfk_2` FOREIGN KEY (`Warehouse_ID`) REFERENCES `WAREHOUSE` (`Warehouse_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `PRICE_WITH_SIZE` (
+  `Product_ID` int NOT NULL,
+  `Size` varchar(50) NOT NULL,
+  `Price` decimal(10,2) DEFAULT NULL,
+  PRIMARY KEY (`Product_ID`,`Size`),
+  CONSTRAINT `PRICE_WITH_SIZE_ibfk_1` FOREIGN KEY (`Product_ID`) REFERENCES `PRODUCT` (`Product_ID`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `PRODUCT` (
+  `Product_ID` int NOT NULL AUTO_INCREMENT,
+  `Product_Name` varchar(255) NOT NULL,
+  `Image` varchar(255) DEFAULT NULL,
+  `Description` text,
+  `Size` varchar(50) DEFAULT NULL,
+  `Price` decimal(10,2) DEFAULT NULL,
+  `Menu_Name` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`Product_ID`),
+  KEY `Menu_Name` (`Menu_Name`),
+  CONSTRAINT `PRODUCT_ibfk_1` FOREIGN KEY (`Menu_Name`) REFERENCES `MENU` (`Menu_Name`)
+) ENGINE=InnoDB AUTO_INCREMENT=74 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `PROVIDE` (
+  `Product_ID` int NOT NULL,
+  `Ingredient_ID` int NOT NULL,
+  `Supplier_ID` int DEFAULT NULL,
+  PRIMARY KEY (`Product_ID`,`Ingredient_ID`),
+  KEY `Ingredient_ID` (`Ingredient_ID`),
+  CONSTRAINT `PROVIDE_ibfk_1` FOREIGN KEY (`Ingredient_ID`) REFERENCES `Ingredient` (`ingredient_id`),
+  CONSTRAINT `PROVIDE_ibfk_2` FOREIGN KEY (`Product_ID`) REFERENCES `PRODUCT` (`Product_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `PROVIDER` (
+  `Provider_ID` int NOT NULL,
+  `PhoneNumber` varchar(15) DEFAULT NULL,
+  `Email` varchar(255) DEFAULT NULL,
+  `Provider_Name` varchar(255) DEFAULT NULL,
+  `Provider_Address` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`Provider_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `Payment` (
+  `Payment_Code` int NOT NULL AUTO_INCREMENT,
+  `Account_Number` varchar(50) DEFAULT NULL,
+  `Payment_Type` enum('Cash','Online') NOT NULL,
+  `Confirmation_Code` varchar(20) NOT NULL,
+  `Paid` decimal(10,2) DEFAULT '0.00',
+  `UnPaid` decimal(10,2) DEFAULT '0.00',
+  PRIMARY KEY (`Payment_Code`),
+  CONSTRAINT `Payment_chk_1` CHECK ((`Paid` >= 0)),
+  CONSTRAINT `Payment_chk_2` CHECK ((`UnPaid` >= 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `Periodic_Report` (
+  `report_id` int NOT NULL AUTO_INCREMENT,
+  `report_date` date NOT NULL,
+  `total_revenue` decimal(15,2) NOT NULL,
+  `total_expense` decimal(15,2) NOT NULL,
+  `total_orders` int NOT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`report_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `Product` (
+  `product_id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) DEFAULT NULL,
+  `category` varchar(50) DEFAULT NULL,
+  `price` decimal(10,2) DEFAULT NULL,
+  `description` text,
+  PRIMARY KEY (`product_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `SELECT_TABLE` (
+  `Account_ID` int NOT NULL,
+  `Product_ID` int NOT NULL,
+  PRIMARY KEY (`Account_ID`,`Product_ID`),
+  KEY `Product_ID` (`Product_ID`),
+  CONSTRAINT `SELECT_TABLE_ibfk_1` FOREIGN KEY (`Product_ID`) REFERENCES `PRODUCT` (`Product_ID`),
+  CONSTRAINT `SELECT_TABLE_ibfk_2` FOREIGN KEY (`Account_ID`) REFERENCES `Customer` (`account_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `SPECIAL_EVENT` (
+  `Event_ID` int NOT NULL AUTO_INCREMENT,
+  `Event_Name` varchar(100) NOT NULL,
+  `Date_Start` date NOT NULL,
+  `Date_End` date NOT NULL,
+  `Description` text,
+  `Status` enum('Active','Inactive') DEFAULT 'Active',
+  `Event_Type` enum('Sale','Promotion') DEFAULT 'Sale',
+  PRIMARY KEY (`Event_ID`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `STORE` (
+  `Store_ID` int NOT NULL,
+  `Store_Name` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`Store_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `SUPPLIER` (
+  `Supplier_ID` int NOT NULL AUTO_INCREMENT,
+  `PhoneNumber` varchar(15) DEFAULT NULL,
+  `Rating` int DEFAULT NULL,
+  `Supplier_Name` varchar(255) DEFAULT NULL,
+  `Supplier_Address` varchar(255) DEFAULT NULL,
+  `Email` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`Supplier_ID`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `Saler` (
+  `saler_id` int NOT NULL AUTO_INCREMENT,
+  `employee_id` VARCHAR(10) NOT NULL,
+  `sales_target` decimal(10,2) DEFAULT NULL,
+  PRIMARY KEY (`saler_id`),
+  KEY `employee_id` (`employee_id`),
+  CONSTRAINT `Saler_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `Employee` (`employee_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `Shipper` (
+  `Ship_Code` int NOT NULL,
+  `Shipper_Name` varchar(255) NOT NULL,
+  `PhoneNumber` varchar(15) NOT NULL,
+  `Delivery_Time` time NOT NULL,
+  `Company_Name` varchar(255) DEFAULT NULL,
+  `Evaluate` decimal(3,2) DEFAULT NULL,
+  PRIMARY KEY (`Ship_Code`),
+  CONSTRAINT `Shipper_chk_1` CHECK (((`Evaluate` >= 0) and (`Evaluate` <= 5)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- ----------------------------------------------------------------------------------------------------------------------------- 
+CREATE TABLE `Voucher` (
+  `Voucher_ID` int NOT NULL AUTO_INCREMENT,
+  `Voucher_Code` varchar(50) NOT NULL,
+  `Discount_Type` enum('Percent','Fixed') NOT NULL,
+  `Discount_Value` decimal(10,2) NOT NULL,
+  `Event_ID` int DEFAULT NULL,
+  `Start_Date` date NOT NULL,
+  `End_Date` date NOT NULL,
+  `Max_Usage` int DEFAULT NULL,
+  `Status` enum('Active','Expired','Disabled') DEFAULT 'Active',
+  PRIMARY KEY (`Voucher_ID`),
+  UNIQUE KEY `Voucher_Code` (`Voucher_Code`),
+  KEY `Event_ID` (`Event_ID`),
+  CONSTRAINT `Voucher_ibfk_1` FOREIGN KEY (`Event_ID`) REFERENCES `SPECIAL_EVENT` (`Event_ID`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `WAREHOUSE` (
+  `Warehouse_ID` int NOT NULL,
+  `Ware_Address` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`Warehouse_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE `WARE_MANER` (
+  `Manager_ID` int NOT NULL,
+  `Ware_ID` int NOT NULL,
+  PRIMARY KEY (`Manager_ID`,`Ware_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- -----------------------------------------------------------------------------------------------------------------------------
+DELIMITER $$
+CREATE  PROCEDURE `UpdateOrderStatusProcedure`(
+    IN p_order_id INT,
+    IN p_new_status ENUM('Pending', 'In Progress', 'Delivered', 'Cancelled', 'Failed'),
+    OUT p_result_message VARCHAR(255)
+)
+proc:BEGIN
+    DECLARE current_status ENUM('Pending', 'In Progress', 'Delivered', 'Cancelled', 'Failed');
+
+    -- Lấy trạng thái hiện tại của đơn hàng
+    SELECT status INTO current_status
+    FROM `Order`
+    WHERE Order_ID = p_order_id;
+
+    -- Kiểm tra nếu không tìm thấy đơn hàng
+    IF current_status IS NULL THEN
+        SET p_result_message = 'Order not found';
+        LEAVE proc;
+    END IF;
+
+    -- Kiểm tra nếu trạng thái hiện tại là 'Cancelled'
+    IF current_status = 'Cancelled' THEN
+        SET p_result_message = 'Cannot update status of a cancelled order';
+        LEAVE proc;
+    END IF;
+
+    -- Cập nhật trạng thái đơn hàng
+    UPDATE `Order`
+    SET status = p_new_status
+    WHERE Order_ID = p_order_id;
+
+    -- Trả về thông báo thành công
+    SET p_result_message = 'Order status updated successfully';
+END $$
+DELIMITER ;
