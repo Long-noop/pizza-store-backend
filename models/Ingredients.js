@@ -11,14 +11,20 @@ const Ingredient = {
         return rows[0];
     },
 
-    addIngredient: async (ingredient) => {
-        const sql = 'CALL addIngredientWithProvide(?, ?, ?, ?, ?, @insertID)';
-        const params = [ingredient.name, ingredient.quantity, ingredient.expiration_date, ingredient.Supplier_ID, ingredient.Product_ID];
-        await db.query(sql, params);
-        const [row] = await db.query('SELECT @insertID AS ingredient_id');
-        return row[0]?.ingredient_id;
+    addIngredient: async (ingredientName) => {
+        const sql = 'CALL AddIngredient(?)';
+        const params = [ingredientName];
+        const [rows] = await db.query(sql, params);
+        // const [row] = await db.query('SELECT @insertID AS ingredient_id');
+        // return row[0]?.ingredient_id;
+        return rows[0][0]?.ingredient_id;
     },
 
+    buyIngredient: async (buyData) => {
+        const sql = 'CALL buyIngredient(?,?,?,?,?)';
+        const params = [buyData.ingredient_id, buyData.quantity, buyData.expiration_date, buyData.Supplier_ID, buyData.Product_ID];
+        await db.query(sql, params);
+    },
     updateIngredient: async (ingredientId, ingredient) => {
         const fields = [];
         const values = [];
