@@ -14,22 +14,26 @@ const Supplier = {
     },
 
     addSupplier: async (supplier) => {
-        const sql = 'INSERT INTO SUPPLIER (PhoneNumber, Rating, Supplier_Name, Supplier_Address, Email, Description) VALUE (?,?,?,?,?,?)';
-        const [result] = await db.query(sql, [supplier.PhoneNumber, supplier.Rating, supplier.Supplier_Name, supplier.Supplier_Address, supplier.Email, supplier.Description]);
-        const supplierId = result.insertId;
+    const ingredientWithPriceJSON = supplier.IngredientWithPrice 
+        ? JSON.stringify(supplier.IngredientWithPrice) 
+        : null;
 
-        if (supplier.IngredientWithPrice) {
-            let priceValues;
-            if (Array.isArray(supplier.IngredientWithPrice)) {
-                priceValues = supplier.IngredientWithPrice.map(ingredientPrice => [supplierId, ingredientPrice.Ingredient_ID, ingredientPrice.Price]);
-            } else {
-                priceValues = [[supplierId, supplier.ingredientPrice.Ingredient_ID, supplier.ingredientPrice.Price]];
-            }
-            const priceSql = 'INSERT INTO DISCOUNT_POLICY (Supplier_ID, Ingredient_ID, Price) VALUES ?';
-            await db.query(priceSql, [priceValues]);
-        }
-        
-        return supplierId;
+    // Call the stored procedure
+    const sql = 'CALL addSupplier(?, ?, ?, ?, ?, ?, ?)';
+    const [rows] = await db.query(sql, [
+        supplier.PhoneNumber,
+        supplier.Rating,
+        supplier.Supplier_Name,
+        supplier.Supplier_Address,
+        supplier.Email,
+        supplier.Description,
+        ingredientWithPriceJSON
+    ]);
+
+    // Extract the supplier ID from the procedure's result
+    const supplierId = rows[0][0].SupplierID;
+
+    return supplierId;
     },
 
     updateSupplier: async (supplierId, supplier) => {
