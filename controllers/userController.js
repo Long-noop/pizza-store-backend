@@ -14,7 +14,7 @@ exports.getEmployeeById = async (req, res) => {
     const { id } = req.params; 
     try {
         const [result] = await db.query(`CALL GetEmployeeList()`);
-        const employee = result[0].find(emp => emp.employee_id === parseInt(id));
+        const employee = result[0].find(emp => emp.employee_id === id);
 
         if (!employee) {
             return res.status(404).json({ error: 'Employee not found' });
@@ -81,7 +81,7 @@ exports.addNewEmployee = async (req, res) => {
 
         res.status(201).json({ message: 'Employee and account created successfully' });
     } catch (error) {
-        console.error(error);
+        console.log(error);
         res.status(500).json({ error: 'Failed to add employee' });
     }
 };
@@ -115,3 +115,30 @@ exports.updateEmployeeInfo = async (req, res) => {
         res.status(500).json({ error: 'Failed to update employee' });
     }
 };
+
+// API tìm kiếm và sắp xếp nhân viên
+exports.searchAndSortE = async (req, res) => {
+    const { search, sortBy, sortOrder = 'ASC' } = req.query;
+  
+    // Xây dựng câu truy vấn SQL
+    let query = 'SELECT * FROM Employee';
+  
+    // Tìm kiếm theo các trường
+    if (search) {
+      query += ` WHERE employee_id LIKE '%${search}%' OR role LIKE '%${search}%' OR gender LIKE '%${search}%' OR phone LIKE '%${search}%'`;
+    }
+  
+    // Sắp xếp theo trường và thứ tự
+    if (sortBy) {
+      query += ` ORDER BY ${sortBy} ${sortOrder.toUpperCase()}`;
+    }
+  
+    try {
+      // Thực thi câu truy vấn SQL và lấy kết quả
+      const [results] = await db.query(query);
+      res.json(results);
+    } catch (err) {
+      console.error('Error fetching employees:', err);
+      res.status(500).json({ message: 'Error fetching employees' });
+    }
+  };
