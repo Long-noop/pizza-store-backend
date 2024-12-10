@@ -60,10 +60,11 @@ exports.registerCustomer = async (req, res) => {
 
     await conn.commit();
     conn.release();
+
     res.status(201).json({ message: 'Đăng ký thành công.' });
   } catch (error) {
-    console.log(error?.sqlMessage);
-    res.status(500).json({ message: error?.sqlMessage || " Register fail" });
+    console.error(error);
+    res.status(500).json({ message: 'Đăng ký thất bại.' });
   }
 };
 
