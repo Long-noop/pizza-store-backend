@@ -64,7 +64,7 @@ exports.registerCustomer = async (req, res) => {
     res.status(201).json({ message: 'Đăng ký thành công.' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Đăng ký thất bại.' });
+    res.status(500).json({ message: error?.sqlMessage || " Register fail" });
   }
 };
 
